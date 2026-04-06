@@ -31,7 +31,7 @@ RUN addgroup -g 1001 -S appgroup && \
 COPY --from=builder /app/server .
 
 # Copy .env.example as default config (actual config via env vars or docker secret)
-COPY cmd/server/.env.example .env 2>/dev/null || true
+RUN if [ -f cmd/server/.env.example ]; then cp cmd/server/.env.example .env; fi
 
 # Switch to non-root user
 USER appuser
