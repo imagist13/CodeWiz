@@ -496,7 +496,6 @@ cd frontend && npm run test
 
 ## 📝 更新日志
 
-### v1.0.0 (2024-08)
 
 - ✅ 完成用户认证体系（注册/登录/JWT）
 - ✅ 实现流式对话（SSE + Agent）
