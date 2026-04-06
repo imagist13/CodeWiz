@@ -1,0 +1,197 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-container {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f0f0f0;
+    border-radius: 10px;
+}
+
+.current-player {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+#reset-btn {
+    padding: 10px 20px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+#reset-btn:hover {
+    background: #45a049;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(9, 60px);
+    grid-template-rows: repeat(10, 60px);
+    gap: 0;
+    border: 2px solid #333;
+    margin: 0 auto;
+    background: #f5deb3;
+    position: relative;
+}
+
+.cell {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.cell.light {
+    background-color: #f5deb3;
+}
+
+.cell.dark {
+    background-color: #d2b48c;
+}
+
+.cell.selected {
+    background-color: #add8e6;
+}
+
+.cell.valid-move {
+    background-color: #90ee90;
+}
+
+.cell.valid-move::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: rgba(0, 128, 0, 0.5);
+}
+
+/* 棋盘边框装饰 */
+.board::before,
+.board::after {
+    content: "";
+    position: absolute;
+    background: #333;
+}
+
+.board::before {
+    width: 100%;
+    height: 2px;
+    top: 0;
+    left: 0;
+}
+
+.board::after {
+    width: 100%;
+    height: 2px;
+    bottom: 0;
+    left: 0;
+}
+
+/* 河界 */
+.board::before {
+    top: 300px;
+    height: 2px;
+}
+
+.board::after {
+    top: 300px;
+    height: 2px;
+}
+
+/* 楚河汉界 */
+.board::before {
+    content: "楚";
+    position: absolute;
+    top: 140px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    color: #333;
+}
+
+.board::after {
+    content: "汉";
+    position: absolute;
+    top: 360px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    color: #333;
+}
+
+/* 棋子样式 */
+.piece {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s;
+    user-select: none;
+}
+
+.piece:hover {
+    transform: scale(1.1);
+}
+
+.piece.red {
+    color: #d32f2f;
+    text-shadow: 0 0 5px rgba(211, 47, 47, 0.5);
+}
+
+.piece.black {
+    color: #333;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.game-status {
+    margin-top: 20px;
+    padding: 10px;
+    background: #e0e0e0;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}

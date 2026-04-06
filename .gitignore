@@ -1,0 +1,84 @@
+# ===================
+# Environment
+# ===================
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+
+# ===================
+# Credentials & Secrets
+# ===================
+*.pem
+*.key
+*.crt
+credentials.json
+secrets.json
+service-account-key.json
+
+# ===================
+# SSL Certificates
+# ===================
+certbot/
+*.pem
+
+# ===================
+# Dependencies
+# ===================
+node_modules/
+frontend/node_modules/
+ai-service/venv/
+ai-service/__pycache__/
+ai-service/.venv/
+
+# ===================
+# Build outputs
+# ===================
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+frontend/.next/
+
+# ===================
+# Go
+# ===================
+backend/vendor/
+backend/*.exe
+backend/tmp/
+
+# ===================
+# Python
+# ===================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# ===================
+# IDE
+# ===================
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===================
+# Logs
+# ===================
+*.log
+logs/
+
+# ===================
+# Temporary files
+# ===================
+*.tmp
+*.temp
+tmp/
+temp/

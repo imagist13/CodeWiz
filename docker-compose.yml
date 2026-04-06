@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: codewiz-postgres
+    environment:
+      POSTGRES_DB: codewiz
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codewiz-net
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: codewiz-backend
+    environment:
+      SERVER_PORT: 8080
+      DATABASE_URL: host=postgres user=postgres password=${POSTGRES_PASSWORD:-postgres123} dbname=codewiz port=5432 sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+      BACKEND_CORS_ORIGINS: "*"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/auth/me || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - codewiz-net
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: codewiz-ai-service
+    environment:
+      DATABASE_URL: host=postgres user=postgres password=${POSTGRES_PASSWORD:-postgres123} dbname=codewiz port=5432 sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+      BACKEND_URL: http://backend:8080
+      SILICON_FLOW_API_URL: https://api.siliconflow.cn/v1
+      SILICON_FLOW_API_KEY: ${SILICON_FLOW_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}
+      DOCKER_CONTAINER: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - codewiz-net
+    restart: unless-stopped
+    volumes:
+      - sandbox_data:/tmp/codewiz-sandbox
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: codewiz-frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: /api
+      NEXT_PUBLIC_AI_SERVICE_URL: /ai/api
+    networks:
+      - codewiz-net
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: codewiz-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Uncomment the line below and configure ssl.conf for HTTPS
+      # - ./nginx/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+      frontend:
+        condition: service_started
+    networks:
+      - codewiz-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    driver: local
+  sandbox_data:
+    driver: local
+
+networks:
+  codewiz-net:
+    driver: bridge
