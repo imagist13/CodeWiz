@@ -22,6 +22,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: codewiz-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       SERVER_PORT: 8080
       DATABASE_URL: host=postgres user=postgres password=${POSTGRES_PASSWORD:-postgres123} dbname=codewiz port=5432 sslmode=disable
