@@ -19,10 +19,15 @@ import Link from "next/link";
 
 export const HomeWelcome: FC = () => {
   const { repos, isLoading, onSelectProject } = useRepos();
-  const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [githubDialogOpen, setGithubDialogOpen] = useState(false);
   const [githubRepoInput, setGithubRepoInput] = useState("");
   const [githubRepoError, setGithubRepoError] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = "/auth/login";
+  };
 
   const handleUseGithubRepo = () => {
     const githubRepoName = githubRepoInput.trim();
@@ -106,8 +111,41 @@ export const HomeWelcome: FC = () => {
     <div className="aui-thread-welcome-root mx-auto flex w-full max-w-(--thread-max-width) grow flex-col items-center justify-center">
       <div className="flex w-full flex-col gap-8 px-2">
         {/* Hero */}
-        <div className="flex animate-in flex-col items-center gap-2 pt-8 text-center duration-500 fill-mode-both fade-in">
-          <svg
+          {/* User nav */}
+          <div className="absolute right-0 top-0 flex items-center gap-2">
+            <div className="flex items-center gap-2 text-sm">
+              {user?.name ? (
+                <span className="text-muted-foreground">{user.name}</span>
+              ) : user?.email ? (
+                <span className="text-muted-foreground">{user.email}</span>
+              ) : null}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              登出
+            </Button>
+          </div>
+
+          <div className="flex animate-in flex-col items-center gap-2 pt-8 text-center duration-500 fill-mode-both fade-in">
+            <svg
             viewBox="0 0 347 280"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
