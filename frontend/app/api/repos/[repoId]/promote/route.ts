@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUpstreamAuthHeaders } from "../../../_lib/upstream-auth";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { getBackendBaseUrl } from "@/lib/server-upstream-urls";
 
 export async function POST(
   req: Request,
@@ -12,7 +12,7 @@ export async function POST(
   const body = await req.text();
 
   const response = await fetch(
-    `${API_BASE_URL}/api/repos/${repoId}/promote`,
+    `${getBackendBaseUrl()}/api/repos/${repoId}/promote`,
     { method: "POST", headers, body },
   );
 

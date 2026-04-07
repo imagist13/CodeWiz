@@ -15,14 +15,14 @@ type ToolCall struct {
 }
 
 type Message struct {
-	ID              uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	ConversationID  uuid.UUID      `gorm:"type:uuid;not null;index" json:"conversation_id"`
-	Role            string         `gorm:"size:50;not null" json:"role"`
-	Content         string         `gorm:"type:text" json:"content"`
-	ToolCalls       JSONB          `gorm:"type:jsonb" json:"tool_calls,omitempty"`
-	ToolCallID      string         `gorm:"size:255" json:"tool_call_id,omitempty"`
-	CreatedAt       time.Time      `gorm:"default:now()" json:"created_at"`
-	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+	ID             uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	ConversationID uuid.UUID      `gorm:"type:uuid;not null;index" json:"conversation_id"`
+	Role           string         `gorm:"size:50;not null" json:"role"`
+	Content        string         `gorm:"type:text" json:"content"`
+	ToolCalls      JSONB          `gorm:"type:jsonb" json:"tool_calls,omitempty"`
+	ToolCallID     string         `gorm:"size:255" json:"tool_call_id,omitempty"`
+	CreatedAt      time.Time      `gorm:"default:now()" json:"created_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (Message) TableName() string {

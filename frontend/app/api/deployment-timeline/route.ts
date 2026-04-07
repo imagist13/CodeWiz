@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUpstreamAuthHeaders } from "../_lib/upstream-auth";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { getBackendBaseUrl } from "@/lib/server-upstream-urls";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const headers = await getUpstreamAuthHeaders(req, { contentType: false });
 
   const response = await fetch(
-    `${API_BASE_URL}/api/projects/${repoId}/deploy/timeline?limit=${limit}`,
+    `${getBackendBaseUrl()}/api/projects/${repoId}/deploy/timeline?limit=${limit}`,
     { headers },
   );
 

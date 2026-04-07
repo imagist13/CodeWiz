@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUpstreamAuthHeaders } from "../../../../_lib/upstream-auth";
-
-const AI_SERVICE_URL =
-  process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8000";
+import { getAiServiceBaseUrl } from "@/lib/server-upstream-urls";
 
 export async function GET(
   req: Request,
@@ -14,7 +12,7 @@ export async function GET(
   const headers = await getUpstreamAuthHeaders(req, { contentType: false });
 
   const response = await fetch(
-    `${AI_SERVICE_URL}/api/repos/${repoId}/conversations/${conversationId}`,
+    `${getAiServiceBaseUrl()}/api/repos/${repoId}/conversations/${conversationId}`,
     { headers },
   );
 

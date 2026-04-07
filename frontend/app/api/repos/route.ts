@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { getUpstreamAuthHeaders } from "../_lib/upstream-auth";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { getBackendBaseUrl } from "@/lib/server-upstream-urls";
 
 type GoProject = { id: string; name?: string };
 type GoConversation = { id: string };
 
 export async function GET(req: Request) {
   const headers = await getUpstreamAuthHeaders(req, { contentType: false });
-  const response = await fetch(`${API_BASE_URL}/api/projects`, {
+  const response = await fetch(`${getBackendBaseUrl()}/api/projects`, {
     headers,
     credentials: "include",
   });
@@ -85,7 +84,7 @@ export async function POST(req: Request) {
   const description =
     typeof rawBody.description === "string" ? rawBody.description : "";
 
-  const projectRes = await fetch(`${API_BASE_URL}/api/projects`, {
+  const projectRes = await fetch(`${getBackendBaseUrl()}/api/projects`, {
     method: "POST",
     headers: authHeaders,
     body: JSON.stringify({ name, description }),
@@ -111,7 +110,7 @@ export async function POST(req: Request) {
 
   const convTitle = conversationTitle || name;
   const convRes = await fetch(
-    `${API_BASE_URL}/api/repos/${projectId}/conversations`,
+    `${getBackendBaseUrl()}/api/repos/${projectId}/conversations`,
     {
       method: "POST",
       headers: authHeaders,

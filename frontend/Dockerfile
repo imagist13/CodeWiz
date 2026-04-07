@@ -1,22 +1,29 @@
 # ---- Build stage ----
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files first for better layer caching
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Install dependencies with npm mirror
+RUN npm config set registry https://registry.npmmirror.com && \
+    if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy source code
 COPY . .
+
+# Baked into client bundle at build time (must match nginx same-origin paths)
+ARG NEXT_PUBLIC_API_URL=
+ARG NEXT_PUBLIC_AI_SERVICE_URL=/ai
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_AI_SERVICE_URL=${NEXT_PUBLIC_AI_SERVICE_URL}
 
 # Build the Next.js application
 RUN npm run build
 
 # ---- Runtime stage ----
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 

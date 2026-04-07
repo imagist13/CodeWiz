@@ -22,3 +22,12 @@ type User struct {
 func (User) TableName() string {
 	return "users"
 }
+
+// BeforeCreate ensures id is set: GORM may otherwise send a zero UUID / omit default,
+// which violates NOT NULL when the DB column has no working default.
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if u.ID == uuid.Nil {
+		u.ID = uuid.New()
+	}
+	return nil
+}

@@ -3,8 +3,22 @@
  * Handles authentication and API calls to Go backend and AI service
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8000";
+/**
+ * In Docker / production: use Nginx reverse proxy (same-origin).
+ * - API_BASE_URL="" → empty string = same-origin, Nginx routes /auth/* and /api/* to backend
+ * - AI_SERVICE_URL="/ai" → Nginx routes /ai/* to ai-service
+ *
+ * In development: use localhost addresses directly.
+ */
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL !== undefined && process.env.NEXT_PUBLIC_API_URL !== ""
+    ? process.env.NEXT_PUBLIC_API_URL
+    : ""; // Empty = same-origin (Nginx proxy in Docker)
+
+const AI_SERVICE_URL =
+  process.env.NEXT_PUBLIC_AI_SERVICE_URL !== undefined && process.env.NEXT_PUBLIC_AI_SERVICE_URL !== ""
+    ? process.env.NEXT_PUBLIC_AI_SERVICE_URL
+    : "/ai"; // Default to /ai (Nginx proxy path)
 
 type ApiResponse<T> = {
   code: number;

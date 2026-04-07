@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-
-const AI_SERVICE_URL =
-  process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8000";
+import { getAiServiceBaseUrl } from "@/lib/server-upstream-urls";
 
 async function resolveAuthorization(req: Request): Promise<string | null> {
   const fromHeader = req.headers.get("authorization");
@@ -27,7 +25,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const response = await fetch(`${AI_SERVICE_URL}/api/chat`, {
+  const response = await fetch(`${getAiServiceBaseUrl()}/api/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

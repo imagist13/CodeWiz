@@ -4,8 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { getUpstreamAuthHeaders } from "../../_lib/upstream-auth";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { getBackendBaseUrl } from "@/lib/server-upstream-urls";
 
 export async function GET(req: Request) {
   const headers = await getUpstreamAuthHeaders(req, { contentType: false });
@@ -13,7 +12,7 @@ export async function GET(req: Request) {
   // 1. Test root /health or /api/projects (no auth first)
   let rootOk = false;
   try {
-    const r = await fetch(`${API_BASE_URL}/api/projects`, {
+    const r = await fetch(`${getBackendBaseUrl()}/api/projects`, {
       headers: {},
       cache: "no-store",
     });
@@ -30,7 +29,7 @@ export async function GET(req: Request) {
 
   if (repoId) {
     try {
-      const r = await fetch(`${API_BASE_URL}/api/projects/${repoId}`, {
+      const r = await fetch(`${getBackendBaseUrl()}/api/projects/${repoId}`, {
         headers,
         cache: "no-store",
       });
@@ -42,7 +41,7 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    apiBase: API_BASE_URL,
+    apiBase: getBackendBaseUrl(),
     goReachable: rootOk,
     projectStatus,
     projectBody: projectBody.slice(0, 500),

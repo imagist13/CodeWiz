@@ -53,6 +53,8 @@ services:
       SILICON_FLOW_API_KEY: ${SILICON_FLOW_API_KEY}
       LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}
       DOCKER_CONTAINER: "true"
+      # 与下方 volumes 挂载路径一致，否则 port_map / 项目文件写到未持久化目录
+      ADORABLE_SANDBOX_ROOT: /tmp/codewiz-sandbox
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -69,11 +71,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_AI_SERVICE_URL: "/ai"
     container_name: codewiz-frontend
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: /api
-      NEXT_PUBLIC_AI_SERVICE_URL: /ai/api
+      BACKEND_INTERNAL_URL: http://backend:8080
+      AI_SERVICE_INTERNAL_URL: http://ai-service:8000
     networks:
       - codewiz-net
     restart: unless-stopped

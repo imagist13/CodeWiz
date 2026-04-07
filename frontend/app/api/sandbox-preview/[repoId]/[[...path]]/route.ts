@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { getAiServiceBaseUrl } from "@/lib/server-upstream-urls";
 
 /**
- * 读取 AI service 共享的端口映射文件。
- * 文件路径对应 ai-service sandbox_manager.py 的 SANDBOX_ROOT/PORT_MAP_FILE。
- * Windows 路径兼容。
+ * 读取 AI service 共享的端口映射文件（仅本地开发：前后端同机、无 Docker 网络时使用）。
+ * 文件路径对应 ai-service sandbox_manager.py 的 SANDBOX_ROOT/port_map.json。
  */
 function readSandboxPortMap(): Record<string, number> {
-  // 必须与 ai-service sandbox_manager.py _get_sandbox_root() 完全一致
   const base =
     process.env.SANDBOX_ROOT ??
     (process.platform === "win32"
@@ -23,26 +22,72 @@ function readSandboxPortMap(): Record<string, number> {
   }
 }
 
+/** Docker / 多容器：向 AI 服务查端口；预览 HTTP 进程在 ai-service 容器内监听 0.0.0.0:port */
+async function resolveSandboxPort(repoId: string): Promise<number | undefined> {
+  const aiBase = getAiServiceBaseUrl();
+  if (aiBase.startsWith("http")) {
+    try {
+      const url = `${aiBase}/api/sandbox/status/${encodeURIComponent(repoId)}`;
+      const res = await fetch(url, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as {
+          exists?: boolean;
+          is_running?: boolean;
+          port?: number;
+        };
+        if (j.exists && j.is_running && typeof j.port === "number") {
+          return j.port;
+        }
+      }
+    } catch (e) {
+      console.warn("[sandbox-preview] AI sandbox status failed:", e);
+    }
+  }
+  return readSandboxPortMap()[repoId];
+}
+
+/**
+ * 预览上游主机：必须与运行 python http.server 的容器一致。
+ * - Docker：AI_SERVICE_INTERNAL_URL=http://ai-service:8000 → 用主机名 ai-service
+ * - 本机：localhost
+ */
+function getPreviewUpstreamHost(): string {
+  const override = process.env.PREVIEW_UPSTREAM_FETCH_HOST?.trim();
+  if (override) return override;
+  const internal = process.env.AI_SERVICE_INTERNAL_URL?.trim();
+  if (internal) {
+    try {
+      return new URL(internal).hostname;
+    } catch {
+      /* ignore */
+    }
+  }
+  return process.platform === "win32" ? "127.0.0.1" : "localhost";
+}
+
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ repoId: string; path?: string[] }> },
 ) {
   const { repoId, path } = await ctx.params;
 
-  // 从 AI service 的共享端口映射文件读取沙箱端口（无鉴权）
-  const portMap = readSandboxPortMap();
-  const port = portMap[repoId];
+  const port = await resolveSandboxPort(repoId);
 
   if (!port) {
-    console.warn("[sandbox-preview] no port found for repoId:", repoId, "— AI service may not have started this project yet");
+    console.warn(
+      "[sandbox-preview] no running sandbox for repoId:",
+      repoId,
+      "— start preview from chat (startDevServerTool) or check AI service",
+    );
     return new NextResponse("Sandbox not started yet", { status: 404 });
   }
 
-  const host = process.env.PREVIEW_UPSTREAM_FETCH_HOST?.trim()
-    || (process.platform === "win32" ? "127.0.0.1" : "localhost");
+  const host = getPreviewUpstreamHost();
   const sandboxBaseUrl = `http://${host}:${port}`;
 
-  // 拼装要代理的路径
   const extra = path?.join("/") ?? "";
   const incoming = new URL(req.url);
   let targetUrl: URL;
@@ -72,7 +117,6 @@ export async function GET(
     return new NextResponse("Preview server unreachable", { status: 502 });
   }
 
-  // 保留内容类型和 3xx 重定向
   const outHeaders = new Headers();
   const ct = upstream.headers.get("content-type");
   if (ct) outHeaders.set("Content-Type", ct);
@@ -87,8 +131,6 @@ export async function GET(
     });
   }
 
-  // 文档 URL 形如 /api/sandbox-preview/<repoId>（无尾斜杠）时，相对路径 style.css 会错误解析到
-  // /api/sandbox-preview/style.css。注入 <base> 让静态资源始终挂在当前仓库代理前缀下。
   const isHtml = (ct || "").toLowerCase().includes("text/html");
   if (isHtml && upstream.ok) {
     const raw = await upstream.text();
