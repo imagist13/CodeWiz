@@ -8,7 +8,7 @@ import (
 )
 
 type Conversation struct {
-	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	ID        uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
 	ProjectID uuid.UUID      `gorm:"type:uuid;not null;index" json:"project_id"`
 	Title     string         `gorm:"size:255" json:"title"`
 	CreatedAt time.Time      `gorm:"default:now()" json:"created_at"`
@@ -19,4 +19,11 @@ type Conversation struct {
 
 func (Conversation) TableName() string {
 	return "conversations"
+}
+
+func (c *Conversation) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == uuid.Nil {
+		c.ID = uuid.New()
+	}
+	return nil
 }
