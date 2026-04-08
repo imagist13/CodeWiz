@@ -28,7 +28,9 @@
 ## 📖 项目背景
 
 在日常开发中，重复性代码（CRUD、API 对接、配置管理）占据了大量时间。本项目旨在构建一个**端到端**的 AI 应用开发平台，用户通过自然语言描述需求，系统自动生成完整项目代码并提供实时预览。
-此项目前端根据https://github.com/freestyle-sh/Adorable的前端界面，后端使用go+python重构。同时通过学习https://github.com/shareAI-lab/learn-claude-code来构建coding-agent harness。感谢大佬们开源。本项目作者遵守开源协议，仅用于学习与交流。
+此项目前端根据 https://github.com/freestyle-sh/Adorable 的前端界面，后端使用go+python重构。同时通过学习 https://github.com/shareAI-lab/learn-claude-code 来构建coding-agent harness。感谢大佬们开源。本项目作者遵守开源协议，仅用于学习与交流。
+
+
 
 **技术栈**：Next.js 16 + Go + FastAPI + PostgreSQL + Docker  
 
