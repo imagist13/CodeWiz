@@ -25,7 +25,7 @@ class Settings(BaseSettings):
         extra="allow",
     )
 
-    app_name: str = "Adorable AI Service"
+    app_name: str = "CodeWiz AI Service"
     debug: bool = False
 
     # Database — 支持 SQLAlchemy URL（postgresql://...）和 libpq 格式（host=... port=...）
@@ -58,6 +58,14 @@ class Settings(BaseSettings):
 
     # Go backend URL (for token validation)
     backend_url: str = "http://localhost:8080"
+
+    # LLM Provider — 支持: silicon_flow / openai / deepseek / zhipu / openai_compatible
+    # 切换 provider 时只需改此项，其余 url/key 沿用已有字段
+    llm_provider: str = "silicon_flow"
+
+    # LLM API Key — 通用字段，切换 provider 时改此项即可
+    # 向后兼容：为空时回退到 silicon_flow_api_key
+    llm_api_key: str = ""
 
     # Silicon Flow — ChatOpenAI 需要 OpenAI 风格 base（含 /v1），内部会再拼 /chat/completions
     silicon_flow_api_url: str = "https://api.siliconflow.cn/v1"

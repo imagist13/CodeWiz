@@ -5,18 +5,7 @@ import json
 import uuid
 from typing import List, Dict, Any, AsyncIterator, Tuple
 from dataclasses import dataclass
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
-
-settings = None
-
-
-def _get_settings():
-    global settings
-    if settings is None:
-        from app.core.config import get_settings
-        settings = get_settings()
-    return settings
 
 
 @dataclass
@@ -111,25 +100,13 @@ class AgentLoop:
         return result
 
     async def run(self, messages: List[Dict[str, Any]]) -> AsyncIterator[StreamEvent]:
-        cfg = _get_settings()
-        if not (cfg.silicon_flow_api_key or "").strip():
-            yield StreamEvent(
-                type="error",
-                content=(
-                    "未配置 Silicon Flow API Key：请在 Adorable/.env 或 ai-service/.env 中设置 "
-                    "SILICON_FLOW_API_KEY（见 https://cloud.siliconflow.cn ）。"
-                ),
-            )
-            return
+        from app.llm import get_llm
 
-        llm = ChatOpenAI(
-            model=cfg.llm_model,
-            api_key=cfg.silicon_flow_api_key,
-            base_url=cfg.silicon_flow_api_url,
-            streaming=True,
-            temperature=0,
-            timeout=120,
-        )
+        try:
+            llm = get_llm()
+        except ValueError as e:
+            yield StreamEvent(type="error", content=str(e))
+            return
 
         tools = _get_tools()
         if tools:
