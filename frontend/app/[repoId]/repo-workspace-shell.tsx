@@ -171,9 +171,10 @@ export function RepoWorkspaceShell({
             if (res.ok) {
               const data = await res.json();
               if (data.is_running) {
+                const proxyBase = sandboxPreviewBase(repo.id);
                 results[repo.id] = {
-                  previewUrl: data.proxy_url ?? sandboxPreviewBase(repo.id),
-                  devCommandTerminalUrl: data.preview_url ?? "",
+                  previewUrl: data.proxy_url ?? proxyBase,
+                  devCommandTerminalUrl: proxyBase,
                 };
               }
             }
@@ -627,7 +628,7 @@ function AppPreview({
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
 }) {
   const [extraTerminals, setExtraTerminals] = useState<TerminalTab[]>([]);
-  const [activeTab, setActiveTab] = useState("dev-server");
+  const [activeTab, setActiveTab] = useState<string>("");
   const [counter, setCounter] = useState(1);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [loadedTerminals, setLoadedTerminals] = useState<Set<string>>(
@@ -653,9 +654,8 @@ function AppPreview({
     : undefined;
 
   const addTerminal = useCallback(() => {
-    if (!metaAdditional) return;
     const id = `terminal-${counter}`;
-    const tabUrl = proxyRoot ?? metaAdditional;
+    const tabUrl = proxyRoot ?? metaAdditional ?? sandboxPreviewBase(repoId ?? "");
     setExtraTerminals((prev) => [
       ...prev,
       {
@@ -667,29 +667,22 @@ function AppPreview({
     ]);
     setActiveTab(id);
     setCounter((c) => c + 1);
-  }, [counter, proxyRoot, metaAdditional]);
+  }, [counter, proxyRoot, metaAdditional, repoId]);
 
   const closeTerminal = useCallback(
     (id: string) => {
-      setExtraTerminals((prev) => prev.filter((t) => t.id !== id));
-      if (activeTab === id) setActiveTab("dev-server");
+      setExtraTerminals((prev) => {
+        const next = prev.filter((t) => t.id !== id);
+        if (activeTab === id && next.length > 0) {
+          setActiveTab(next[next.length - 1].id);
+        }
+        return next;
+      });
     },
     [activeTab],
   );
 
-  const allTabs: TerminalTab[] = [
-    ...(metadata!.devCommandTerminalUrl
-      ? [
-          {
-            id: "dev-server",
-            label: "Dev Server",
-            url: proxyRoot ?? metadata!.devCommandTerminalUrl,
-            closable: false,
-          },
-        ]
-      : []),
-    ...extraTerminals,
-  ];
+  const allTabs: TerminalTab[] = [...extraTerminals];
 
   const mainFrameSrc = proxyRoot ?? metadata!.previewUrl;
 
@@ -757,16 +750,14 @@ function AppPreview({
             </button>
           ))}
 
-          {metaAdditional && (
-            <button
-              type="button"
-              onClick={addTerminal}
-              className="ml-1 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="New terminal"
-            >
-              <PlusIcon className="size-3.5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={addTerminal}
+            className="ml-1 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="New terminal"
+          >
+            <PlusIcon className="size-3.5" />
+          </button>
         </div>
 
         <div className="relative min-h-0 flex-1 bg-[rgb(30,30,30)]">
