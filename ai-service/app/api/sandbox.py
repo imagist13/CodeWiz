@@ -3,7 +3,7 @@ Sandbox management API endpoints.
 """
 from fastapi import APIRouter
 
-from app.harness.sandbox_manager import get_sandbox_manager
+from app.harness.sandbox.sandbox_manager import get_sandbox_manager
 
 router = APIRouter(prefix="/api/sandbox", tags=["sandbox"])
 

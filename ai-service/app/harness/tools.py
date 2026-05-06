@@ -37,7 +37,7 @@ def _sandbox_root() -> str:
     此前 tools 默认用 /tmp/adorable-sandbox，而 Windows 上 manager 用 %TEMP%，
     导致文件写在一处、http.server 在另一处 → 预览「Directory listing for /」为空。
     """
-    from app.harness.sandbox_manager import SANDBOX_ROOT
+    from app.harness.sandbox.sandbox_manager import SANDBOX_ROOT
 
     return SANDBOX_ROOT
 
@@ -249,7 +249,7 @@ def write_file_tool(file: str, content: str) -> str:
 
 def _ensure_sandbox_running() -> None:
     """Start the sandbox server if not already running (idempotent)."""
-    from app.harness.sandbox_manager import get_sandbox_manager
+    from app.harness.sandbox.sandbox_manager import get_sandbox_manager
     repo_id = get_current_repo_id()
     if not repo_id:
         return
@@ -500,7 +500,7 @@ def delete_path_tool(path: str, recursive: bool = False) -> str:
     }
 )
 def start_dev_server_tool() -> str:
-    from app.harness.sandbox_manager import get_sandbox_manager
+    from app.harness.sandbox.sandbox_manager import get_sandbox_manager
     repo_id = get_current_repo_id()
     if not repo_id:
         return "Error: No project context. Cannot start dev server."
@@ -530,7 +530,7 @@ def start_dev_server_tool() -> str:
     }
 )
 def get_preview_url_tool() -> str:
-    from app.harness.sandbox_manager import get_sandbox_manager
+    from app.harness.sandbox.sandbox_manager import get_sandbox_manager
     repo_id = get_current_repo_id()
     if not repo_id:
         return "Error: No project context."
