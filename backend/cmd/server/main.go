@@ -1,12 +1,12 @@
 package main
 
 import (
-	"adorable-backend/internal/config"
-	"adorable-backend/internal/handlers"
-	"adorable-backend/internal/models"
-	"adorable-backend/internal/repositories"
-	"adorable-backend/internal/router"
-	"adorable-backend/internal/services"
+	"codewiz-backend/internal/config"
+	"codewiz-backend/internal/handlers"
+	"codewiz-backend/internal/models"
+	"codewiz-backend/internal/repositories"
+	"codewiz-backend/internal/router"
+	"codewiz-backend/internal/services"
 	"log"
 	"os"
 

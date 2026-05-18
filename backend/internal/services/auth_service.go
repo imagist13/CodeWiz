@@ -1,9 +1,9 @@
 package services
 
 import (
-	"adorable-backend/internal/config"
-	"adorable-backend/internal/models"
-	"adorable-backend/internal/repositories"
+	"codewiz-backend/internal/config"
+	"codewiz-backend/internal/models"
+	"codewiz-backend/internal/repositories"
 	"errors"
 	"time"
 
@@ -76,7 +76,7 @@ func (s *AuthService) GenerateToken(user *models.User) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "adorable-backend",
+			Issuer:    "codewiz-backend",
 		},
 	}
 

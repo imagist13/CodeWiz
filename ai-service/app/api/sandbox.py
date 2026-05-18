@@ -27,6 +27,7 @@ async def sandbox_status(project_id: str):
     if status.get("exists") and status.get("is_running"):
         repo_id = project_id
         status["proxy_url"] = f"/api/sandbox-preview/{repo_id}"
+        status["dev_server_url"] = status.get("preview_url", "")
     return status
 
 

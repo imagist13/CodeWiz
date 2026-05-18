@@ -27,8 +27,8 @@ from typing import Optional
 def _get_sandbox_root() -> str:
     """跨平台沙箱根目录：Linux 用 /tmp，Windows 用 %TEMP%"""
     if sys.platform == "win32":
-        return os.path.join(os.environ.get("TEMP", "C:\\temp"), "adorable-sandbox")
-    return os.environ.get("ADORABLE_SANDBOX_ROOT", "/tmp/adorable-sandbox")
+        return os.path.join(os.environ.get("TEMP", "C:\\temp"), "codewiz-sandbox")
+    return os.environ.get("CODEWIZ_SANDBOX_ROOT", "/tmp/codewiz-sandbox")
 
 SANDBOX_ROOT = _get_sandbox_root()
 

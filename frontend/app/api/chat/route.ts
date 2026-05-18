@@ -8,7 +8,7 @@ async function resolveAuthorization(req: Request): Promise<string | null> {
     return fromHeader;
   }
   const jar = await cookies();
-  const token = jar.get("adorable_token")?.value;
+  const token = jar.get("codewiz_token")?.value;
   if (token) {
     return `Bearer ${token}`;
   }

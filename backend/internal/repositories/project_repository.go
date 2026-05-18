@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"adorable-backend/internal/models"
+	"codewiz-backend/internal/models"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

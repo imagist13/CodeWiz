@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"adorable-backend/internal/services"
+	"codewiz-backend/internal/services"
 	"net/http"
 	"strings"
 

@@ -1,8 +1,8 @@
 package services
 
 import (
-	"adorable-backend/internal/models"
-	"adorable-backend/internal/repositories"
+	"codewiz-backend/internal/models"
+	"codewiz-backend/internal/repositories"
 	"errors"
 	"io"
 	"os"

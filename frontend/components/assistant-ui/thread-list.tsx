@@ -29,7 +29,7 @@ const ThreadListSkeleton: FC = () => {
         <div
           key={i}
           role="status"
-          aria-label="Loading threads"
+          aria-label="加载对话中"
           className="aui-thread-list-skeleton-wrapper flex h-8 items-center px-2.5"
         >
           <Skeleton className="aui-thread-list-skeleton h-3.5 w-full" />
@@ -44,7 +44,7 @@ const ThreadListItem: FC = () => {
     <ThreadListItemPrimitive.Root className="aui-thread-list-item group/item relative flex h-8 items-center rounded-lg transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-active:bg-muted">
       <ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger flex h-full min-w-0 flex-1 items-center overflow-hidden px-2.5 text-start text-[13px]">
         <span className="truncate">
-          <ThreadListItemPrimitive.Title fallback="New Chat" />
+          <ThreadListItemPrimitive.Title fallback="新对话" />
         </span>
       </ThreadListItemPrimitive.Trigger>
       <ThreadListItemMore />
@@ -62,7 +62,7 @@ const ThreadListItemMore: FC = () => {
           className="aui-thread-list-item-more absolute right-1 size-6 p-0 opacity-0 transition-opacity group-hover/item:opacity-100 data-[state=open]:bg-accent data-[state=open]:opacity-100"
         >
           <MoreHorizontalIcon className="size-3.5" />
-          <span className="sr-only">More options</span>
+          <span className="sr-only">更多选项</span>
         </Button>
       </ThreadListItemMorePrimitive.Trigger>
       <ThreadListItemMorePrimitive.Content
@@ -73,7 +73,7 @@ const ThreadListItemMore: FC = () => {
         <ThreadListItemPrimitive.Archive asChild>
           <ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
             <ArchiveIcon className="size-4" />
-            Archive
+            归档
           </ThreadListItemMorePrimitive.Item>
         </ThreadListItemPrimitive.Archive>
       </ThreadListItemMorePrimitive.Content>

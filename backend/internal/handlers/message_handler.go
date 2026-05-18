@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"adorable-backend/internal/services"
-	"adorable-backend/pkg/response"
+	"codewiz-backend/internal/services"
+	"codewiz-backend/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
