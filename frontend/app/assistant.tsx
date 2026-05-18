@@ -1,25 +1,20 @@
 "use client";
 
 import { AssistantRuntimeProvider, useAuiState } from "@assistant-ui/react";
-import {
-  useAISDKRuntime,
-  AssistantChatTransport,
-} from "@assistant-ui/react-ai-sdk";
+import { useAISDKRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-sdk";
 import { useChat } from "@ai-sdk/react";
 import { type UIMessage } from "ai";
 import { Thread } from "@/components/assistant-ui/thread";
 import { clientAuthHeaders } from "@/lib/client-auth-headers";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-
-type ThreadState = {
-  isEmpty: boolean;
-  isRunning: boolean;
-};
-
-type CreateFromGithubDetail = {
-  githubRepoName: string;
-};
+import {
+  useCreateFromGithub,
+  useGoHome,
+  useGoToRepo,
+  useThreadStateSync,
+  type ThreadState,
+} from "@/hooks/use-app-events";
 
 const EMPTY_MESSAGES: UIMessage[] = [];
 
@@ -51,14 +46,13 @@ export const Assistant = ({
 }) => {
   const resolvedInitialMessages = initialMessages ?? EMPTY_MESSAGES;
 
-  const [seedMessages, setSeedMessages] = useState<UIMessage[]>(
-    resolvedInitialMessages,
-  );
+  const [seedMessages, setSeedMessages] = useState<UIMessage[]>(resolvedInitialMessages);
   const [runtimeVersion, setRuntimeVersion] = useState(0);
   const [localRepoId, setLocalRepoId] = useState<string | null>(selectedRepoId);
   const [localConversationId, setLocalConversationId] = useState<string | null>(
     selectedConversationId,
   );
+
   const activeRepoIdRef = useRef<string | null>(selectedRepoId);
   const activeConversationIdRef = useRef<string | null>(selectedConversationId);
   const onActiveConversationChangeRef = useRef(onActiveConversationChange);
@@ -80,132 +74,62 @@ export const Assistant = ({
   }, [selectedConversationId, selectedRepoId]);
 
   useEffect(() => {
-    if (selectedRepoId) {
-      activeRepoIdRef.current = selectedRepoId;
-    }
-    if (selectedConversationId) {
-      activeConversationIdRef.current = selectedConversationId;
-    }
+    if (selectedRepoId) activeRepoIdRef.current = selectedRepoId;
+    if (selectedConversationId) activeConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId, selectedRepoId]);
 
   useEffect(() => {
     onActiveConversationChangeRef.current = onActiveConversationChange;
   }, [onActiveConversationChange]);
 
-  useEffect(() => {
-    const handleGoHome = () => {
-      setSeedMessages(EMPTY_MESSAGES);
-      setLocalRepoId(null);
-      setLocalConversationId(null);
-      activeRepoIdRef.current = null;
-      activeConversationIdRef.current = null;
-      chatSessionIdRef.current = `home:draft:${Date.now()}`;
-      setRuntimeVersion((version) => version + 1);
-    };
+  // ─── Navigation hooks ────────────────────────────────────────────────
 
-    window.addEventListener("adorable:go-home", handleGoHome);
-    return () => {
-      window.removeEventListener("adorable:go-home", handleGoHome);
-    };
-  }, []);
+  useGoHome(() => {
+    setSeedMessages(EMPTY_MESSAGES);
+    setLocalRepoId(null);
+    setLocalConversationId(null);
+    activeRepoIdRef.current = null;
+    activeConversationIdRef.current = null;
+    chatSessionIdRef.current = `home:draft:${Date.now()}`;
+    setRuntimeVersion((v) => v + 1);
+  });
 
-  useEffect(() => {
-    const handleGoToRepo = (event: Event) => {
-      const customEvent = event as CustomEvent<{ repoId: string }>;
-      const detail = customEvent.detail;
-      if (!detail?.repoId) return;
+  useGoToRepo((repoId) => {
+    setSeedMessages(EMPTY_MESSAGES);
+    setLocalRepoId(repoId);
+    setLocalConversationId(null);
+    activeRepoIdRef.current = repoId;
+    activeConversationIdRef.current = null;
+    chatSessionIdRef.current = `repo:${repoId}:draft:${Date.now()}`;
+    setRuntimeVersion((v) => v + 1);
+  });
 
-      setSeedMessages(EMPTY_MESSAGES);
-      setLocalRepoId(detail.repoId);
-      setLocalConversationId(null);
-      activeRepoIdRef.current = detail.repoId;
-      activeConversationIdRef.current = null;
-      chatSessionIdRef.current = `repo:${detail.repoId}:draft:${Date.now()}`;
-      setRuntimeVersion((version) => version + 1);
-    };
-
-    window.addEventListener(
-      "adorable:go-to-repo",
-      handleGoToRepo as EventListener,
+  useCreateFromGithub((repoId, conversationId) => {
+    const nextPath = `/${repoId}/${conversationId}`;
+    window.history.replaceState(window.history.state, "", nextPath);
+    setSeedMessages(EMPTY_MESSAGES);
+    setLocalRepoId(repoId);
+    setLocalConversationId(conversationId);
+    activeRepoIdRef.current = repoId;
+    activeConversationIdRef.current = conversationId;
+    chatSessionIdRef.current = `conversation:${conversationId}`;
+    setRuntimeVersion((v) => v + 1);
+    onActiveConversationChangeRef.current?.(repoId, conversationId);
+    window.dispatchEvent(
+      new CustomEvent("codewiz:active-conversation", {
+        detail: { repoId, conversationId },
+      }),
     );
-    return () => {
-      window.removeEventListener(
-        "adorable:go-to-repo",
-        handleGoToRepo as EventListener,
-      );
-    };
-  }, []);
+    window.dispatchEvent(new Event("codewiz:repos-updated"));
+  });
 
-  useEffect(() => {
-    const handleCreateFromGithub = async (event: Event) => {
-      const customEvent = event as CustomEvent<CreateFromGithubDetail>;
-      const githubRepoName = customEvent.detail?.githubRepoName?.trim();
-      if (!githubRepoName) return;
-
-      const token =
-        typeof window !== "undefined"
-          ? localStorage.getItem("adorable_token")
-          : null;
-      if (!token) {
-        window.location.href = "/auth/login";
-        return;
-      }
-
-      const response = await fetch("/api/repos", {
-        method: "POST",
-        headers: clientAuthHeaders({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify({ githubRepoName }),
-      });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const data = await response.json();
-      const repoId = data.id as string | undefined;
-      const conversationId = data.conversationId as string | undefined;
-
-      if (!repoId || !conversationId) {
-        return;
-      }
-
-      const nextPath = `/${repoId}/${conversationId}`;
-      window.history.replaceState(window.history.state, "", nextPath);
-      setSeedMessages(EMPTY_MESSAGES);
-      setLocalRepoId(repoId);
-      setLocalConversationId(conversationId);
-      activeRepoIdRef.current = repoId;
-      activeConversationIdRef.current = conversationId;
-      chatSessionIdRef.current = `conversation:${conversationId}`;
-      setRuntimeVersion((version) => version + 1);
-      onActiveConversationChangeRef.current?.(repoId, conversationId);
-      window.dispatchEvent(
-        new CustomEvent("adorable:active-conversation", {
-          detail: { repoId, conversationId },
-        }),
-      );
-      window.dispatchEvent(new Event("adorable:repos-updated"));
-    };
-
-    window.addEventListener(
-      "adorable:create-from-github",
-      handleCreateFromGithub as EventListener,
-    );
-    return () => {
-      window.removeEventListener(
-        "adorable:create-from-github",
-        handleCreateFromGithub as EventListener,
-      );
-    };
-  }, []);
+  // ─── Conversation management ────────────────────────────────────────
 
   const ensureActiveConversation = useCallback(
     async (requestedRepoName?: string, requestedConversationTitle?: string) => {
       const token =
         typeof window !== "undefined"
-          ? localStorage.getItem("adorable_token")
+          ? localStorage.getItem("codewiz_token")
           : null;
       if (!token) {
         window.location.href = "/auth/login";
@@ -216,10 +140,7 @@ export const Assistant = ({
       const activeConversationId = activeConversationIdRef.current;
 
       if (activeRepoId && activeConversationId) {
-        return {
-          repoId: activeRepoId,
-          conversationId: activeConversationId,
-        };
+        return { repoId: activeRepoId, conversationId: activeConversationId };
       }
 
       if (activeRepoId) {
@@ -227,29 +148,17 @@ export const Assistant = ({
           `/api/repos/${activeRepoId}/conversations`,
           {
             method: "POST",
-            headers: clientAuthHeaders({
-              "Content-Type": "application/json",
-            }),
+            headers: clientAuthHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify(
-              requestedConversationTitle
-                ? { title: requestedConversationTitle }
-                : {},
+              requestedConversationTitle ? { title: requestedConversationTitle } : {},
             ),
           },
         );
+        if (!response.ok) throw new Error("Failed to create a conversation for the selected repo.");
 
-        if (!response.ok) {
-          throw new Error(
-            "Failed to create a conversation for the selected repo.",
-          );
-        }
-
-        const data = await response.json();
-        const conversationId = data.conversationId as string | undefined;
-
-        if (!conversationId) {
-          throw new Error("Conversation creation did not return an id.");
-        }
+        const data = (await response.json()) as { conversationId?: string };
+        const conversationId = data.conversationId;
+        if (!conversationId) throw new Error("Conversation creation did not return an id.");
 
         const nextPath = `/${activeRepoId}/${conversationId}`;
         window.history.replaceState(window.history.state, "", nextPath);
@@ -257,22 +166,16 @@ export const Assistant = ({
         activeConversationIdRef.current = conversationId;
         onActiveConversationChangeRef.current?.(activeRepoId, conversationId);
         window.dispatchEvent(
-          new CustomEvent("adorable:active-conversation", {
+          new CustomEvent("codewiz:active-conversation", {
             detail: { repoId: activeRepoId, conversationId },
           }),
         );
-
-        return {
-          repoId: activeRepoId,
-          conversationId,
-        };
+        return { repoId: activeRepoId, conversationId };
       }
 
       const response = await fetch("/api/repos", {
         method: "POST",
-        headers: clientAuthHeaders({
-          "Content-Type": "application/json",
-        }),
+        headers: clientAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(
           requestedRepoName || requestedConversationTitle
             ? {
@@ -284,17 +187,12 @@ export const Assistant = ({
             : {},
         ),
       });
-      if (!response.ok) {
-        throw new Error("Failed to create a repository for this chat.");
-      }
+      if (!response.ok) throw new Error("Failed to create a repository for this chat.");
 
-      const data = await response.json();
-      const repoId = data.id as string | undefined;
-      const conversationId = data.conversationId as string | undefined;
-
-      if (!repoId || !conversationId) {
-        throw new Error("Repository creation did not return ids.");
-      }
+      const data = (await response.json()) as { id?: string; conversationId?: string };
+      const repoId = data.id;
+      const conversationId = data.conversationId;
+      if (!repoId || !conversationId) throw new Error("Repository creation did not return ids.");
 
       const nextPath = `/${repoId}/${conversationId}`;
       window.history.replaceState(window.history.state, "", nextPath);
@@ -304,50 +202,39 @@ export const Assistant = ({
       activeConversationIdRef.current = conversationId;
       onActiveConversationChangeRef.current?.(repoId, conversationId);
       window.dispatchEvent(
-        new CustomEvent("adorable:active-conversation", {
+        new CustomEvent("codewiz:active-conversation", {
           detail: { repoId, conversationId },
         }),
       );
-
-      return {
-        repoId,
-        conversationId,
-      };
+      return { repoId, conversationId };
     },
     [],
   );
 
-  const runtimeKey = `${chatSessionIdRef.current}:${runtimeVersion}`;
+  // ─── Thread state sync ─────────────────────────────────────────────
 
   const handleThreadStateChange = useCallback(
-    (next: ThreadState) => {
-      onThreadStateChange?.(next);
-      window.dispatchEvent(
-        new CustomEvent("adorable:thread-state", {
-          detail: {
-            repoId: activeRepoIdRef.current,
-            isRunning: next.isRunning,
-          },
-        }),
-      );
+    (state: ThreadState) => {
+      onThreadStateChange?.(state);
     },
     [onThreadStateChange],
   );
 
-  const dispatchReposUpdated = useCallback(() => {
+  const { dispatch: dispatchThreadState } = useThreadStateSync(
+    handleThreadStateChange,
+  );
+
+  const handleChatFinish = useCallback(() => {
     const repoId = activeRepoIdRef.current;
     if (!repoId) return;
-
     window.dispatchEvent(
-      new CustomEvent("adorable:repos-updated", {
-        detail: { repoId },
-      }),
+      new CustomEvent("codewiz:repos-updated", { detail: { repoId } }),
     );
   }, []);
 
-  const handleChatFinish = useCallback(() => {
-    dispatchReposUpdated();
-  }, [dispatchReposUpdated]);
+  // ─── Chat setup ────────────────────────────────────────────────────
+
+  const runtimeKey = `${chatSessionIdRef.current}:${runtimeVersion}`;
 
   const chat = useChat<UIMessage>({
     id: runtimeKey,
@@ -357,18 +244,15 @@ export const Assistant = ({
         const prompt = extractUserPrompt(options.messages);
         const repoName = prompt ? prompt.slice(0, 50) : undefined;
         const conversationTitle = prompt ? prompt.slice(0, 60) : undefined;
-        const active = await ensureActiveConversation(
-          repoName,
-          conversationTitle,
-        );
+        const active = await ensureActiveConversation(repoName, conversationTitle);
 
         if (prompt) {
           window.dispatchEvent(
-            new CustomEvent("adorable:metadata-optimistic", {
+            new CustomEvent("codewiz:metadata-optimistic", {
               detail: {
                 repoId: active.repoId,
                 conversationId: active.conversationId,
-                repoName: repoName,
+                repoName,
                 conversationTitle,
               },
             }),
@@ -376,7 +260,9 @@ export const Assistant = ({
         }
 
         return {
-          headers: clientAuthHeaders(options.headers as Record<string, string> | undefined),
+          headers: clientAuthHeaders(
+            options.headers as Record<string, string> | undefined,
+          ),
           body: {
             ...options.body,
             messages: options.messages,
@@ -396,25 +282,35 @@ export const Assistant = ({
 
   const runtime = useAISDKRuntime(chat);
 
+  // ─── Render ────────────────────────────────────────────────────────
+
   return (
     <AssistantRuntimeProvider key={runtimeKey} runtime={runtime}>
-      <ThreadStateBridge onThreadStateChange={handleThreadStateChange} />
+      <ThreadStateDispatcher
+        onDispatch={(state) =>
+          dispatchThreadState(state, activeRepoIdRef.current)
+        }
+      />
       <Thread welcome={welcome} />
     </AssistantRuntimeProvider>
   );
 };
 
-function ThreadStateBridge({
-  onThreadStateChange,
+/**
+ * Reads assistant-ui thread state and dispatches it to both the parent callback
+ * and the global event bus.
+ */
+function ThreadStateDispatcher({
+  onDispatch,
 }: {
-  onThreadStateChange?: (next: ThreadState) => void;
+  onDispatch: (state: ThreadState) => void;
 }) {
   const isEmpty = useAuiState(({ thread }) => thread.isEmpty);
   const isRunning = useAuiState(({ thread }) => thread.isRunning);
 
   useEffect(() => {
-    onThreadStateChange?.({ isEmpty, isRunning });
-  }, [isEmpty, isRunning, onThreadStateChange]);
+    onDispatch({ isEmpty, isRunning });
+  }, [isEmpty, isRunning, onDispatch]);
 
   return null;
 }

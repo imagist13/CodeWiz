@@ -52,15 +52,15 @@ export const ToolFallback: ToolCallMessagePartComponent = ({
         <div className="mt-1 mb-1 ml-9 flex max-h-64 flex-col gap-2 overflow-auto rounded border bg-muted/30 px-3 py-2">
           <div>
             <p className="mb-0.5 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-              Input
+              输入
             </p>
             <pre className="text-xs whitespace-pre-wrap">{argsText}</pre>
           </div>
           {result !== undefined && (
             <div>
-              <p className="mb-0.5 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-                Result
-              </p>
+            <p className="mb-0.5 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+              结果
+            </p>
               <pre className="text-xs whitespace-pre-wrap">
                 {typeof result === "string"
                   ? result

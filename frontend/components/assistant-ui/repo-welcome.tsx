@@ -21,7 +21,7 @@ export const RepoWelcome: FC = () => {
         {hasConversations && (
           <div className="mt-8 w-full max-w-(--thread-max-width) animate-in delay-100 duration-300 fade-in slide-in-from-bottom-2">
             <p className="mb-2 px-3 text-xs font-medium text-muted-foreground/50">
-              Previous conversations
+              历史对话
             </p>
             <div className="divide-y divide-border/50">
               {conversations.map((conversation) => {
@@ -34,7 +34,7 @@ export const RepoWelcome: FC = () => {
                     className="flex w-full items-center rounded-md px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                   >
                     <span className="truncate">
-                      {title || "Untitled conversation"}
+                      {title || "未命名对话"}
                     </span>
                   </button>
                 );

@@ -2,7 +2,7 @@
 
 ## 概述
 
-AI Service 是 **Adorable** 项目的核心组件之一，是一个基于 FastAPI 构建的 Python 微服务。它负责处理 AI 对话交互、代码沙箱管理以及与 LLM（大语言模型）的通信。项目默认运行在 `http://localhost:8000`。
+AI Service 是 **CodeWiz** 项目的核心组件之一，是一个基于 FastAPI 构建的 Python 微服务。它负责处理 AI 对话交互、代码沙箱管理以及与 LLM（大语言模型）的通信。项目默认运行在 `http://localhost:8000`。
 
 ---
 
@@ -115,8 +115,8 @@ AI Agent 可调用的所有工具定义在 `app/harness/tools.py` 中：
 **端口分配算法**：使用 FNV-1a 哈希，确保同一 project_id 始终映射到相同端口。
 
 **沙箱根目录**：
-- Linux: `/tmp/adorable-sandbox`
-- Windows: `%TEMP%/adorable-sandbox`
+- Linux: `/tmp/codewiz-sandbox`
+- Windows: `%TEMP%/codewiz-sandbox`
 
 ### 4. 会话管理（Conversation）
 
@@ -153,14 +153,14 @@ AI Agent 可调用的所有工具定义在 `app/harness/tools.py` 中：
 
 通过 `.env` 文件配置，查找路径优先级：
 1. `ai-service/.env`
-2. `Adorable/.env`（项目根目录）
+2. `CodeWiz/.env`（项目根目录）
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `APP_NAME` | `Adorable AI Service` | 应用名称 |
+| `APP_NAME` | `CodeWiz AI Service` | 应用名称 |
 | `DEBUG` | `False` | 调试模式 |
-| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/adorable` | 数据库连接（支持 libpq 格式） |
-| `JWT_SECRET` | `adorable-dev-secret-change-in-prod` | JWT 密钥（需与 Go Backend 一致） |
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/codewiz` | 数据库连接（支持 libpq 格式） |
+| `JWT_SECRET` | `codewiz-dev-secret-change-in-prod` | JWT 密钥（需与 Go Backend 一致） |
 | `BACKEND_URL` | `http://localhost:8080` | Go Backend 地址 |
 | `SILICON_FLOW_API_URL` | `https://api.siliconflow.cn/v1` | Silicon Flow API 地址 |
 | `SILICON_FLOW_API_KEY` | *(空)* | **必填**，Silicon Flow API Key |

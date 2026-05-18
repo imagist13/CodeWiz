@@ -11,8 +11,8 @@ function readSandboxPortMap(): Record<string, number> {
   const base =
     process.env.SANDBOX_ROOT ??
     (process.platform === "win32"
-      ? join(process.env.TEMP ?? "C:\\temp", "adorable-sandbox")
-      : "/tmp/adorable-sandbox");
+      ? join(process.env.TEMP ?? "C:\\temp", "codewiz-sandbox")
+      : "/tmp/codewiz-sandbox");
   const mapFile = join(base, "port_map.json");
   if (!existsSync(mapFile)) return {};
   try {

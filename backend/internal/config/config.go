@@ -13,8 +13,8 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		ServerPort:           getEnv("SERVER_PORT", "8080"),
-		DatabaseURL:          getEnv("DATABASE_URL", "host=localhost user=postgres password=postgres dbname=adorable port=5432 sslmode=disable"),
-		JWTSecret:            getEnv("JWT_SECRET", "adorable-dev-secret-change-in-prod"),
+		DatabaseURL:          getEnv("DATABASE_URL", "host=localhost user=postgres password=postgres dbname=codewiz port=5432 sslmode=disable"),
+		JWTSecret:            getEnv("JWT_SECRET", "codewiz-dev-secret-change-in-prod"),
 	}
 }
 

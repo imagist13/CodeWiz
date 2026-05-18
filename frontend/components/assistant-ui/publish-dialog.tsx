@@ -25,13 +25,13 @@ const formatRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
   const now = Date.now();
   const diffSeconds = Math.floor((now - date.getTime()) / 1000);
-  if (diffSeconds < 60) return "just now";
+  if (diffSeconds < 60) return "刚刚";
   const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours}小时前`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
+  return `${diffDays}天前`;
 };
 
 /* ------------------------------------------------------------------ */
@@ -76,7 +76,7 @@ export function PublishDialog({
   const saveDomain = async () => {
     const nextDomain = domainInput.trim().toLowerCase();
     if (!nextDomain.endsWith(".style.dev")) {
-      setDomainError("Domain must end in .style.dev");
+      setDomainError("域名必须以 .style.dev 结尾");
       return;
     }
     setDomainError(null);
@@ -85,7 +85,7 @@ export function PublishDialog({
       await onSetProductionDomain(repo.id, nextDomain);
       setIsEditingDomain(false);
     } catch (e) {
-      setDomainError(e instanceof Error ? e.message : "Failed to save domain");
+      setDomainError(e instanceof Error ? e.message : "保存域名失败");
     } finally {
       setIsSavingDomain(false);
     }
@@ -114,15 +114,14 @@ export function PublishDialog({
           className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-foreground/90"
         >
           <RocketIcon className="size-3" />
-          Publish
+          发布
         </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Publish</DialogTitle>
+          <DialogTitle>发布</DialogTitle>
           <DialogDescription>
-            Every commit gets a staging deployment automatically. Publish
-            promotes a deployment to your production domain.
+            每次提交都会自动生成一个预发布部署。发布可以将某个部署提升为正式生产环境。
           </DialogDescription>
         </DialogHeader>
 
@@ -136,7 +135,7 @@ export function PublishDialog({
                 {hasDomain ? <CheckCircle2Icon className="size-3.5" /> : "1"}
               </span>
               <span className="text-sm font-medium">
-                {hasDomain ? "Domain configured" : "Set up your domain"}
+                {hasDomain ? "域名已配置" : "设置你的域名"}
               </span>
             </div>
 
@@ -166,7 +165,7 @@ export function PublishDialog({
                     {isSavingDomain ? (
                       <Loader2Icon className="size-3.5 animate-spin" />
                     ) : (
-                      "Save"
+                      "保存"
                     )}
                   </Button>
                   <Button
@@ -176,7 +175,7 @@ export function PublishDialog({
                     onClick={cancelEditDomain}
                     disabled={isSavingDomain}
                   >
-                    Cancel
+                    取消
                   </Button>
                 </div>
                 {domainError && (
@@ -199,7 +198,7 @@ export function PublishDialog({
                   type="button"
                   onClick={startEditDomain}
                   className="ml-1 inline-flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground"
-                  title="Edit domain"
+                  title="编辑域名"
                 >
                   <PencilIcon className="size-3" />
                 </button>
@@ -207,8 +206,7 @@ export function PublishDialog({
             ) : (
               <div className="pl-7">
                 <p className="mb-2 text-[13px] text-muted-foreground/60">
-                  Choose a <span className="font-medium">.style.dev</span>{" "}
-                  subdomain for your app.
+                  为你的应用选择一个 <span className="font-medium">.style.dev</span> 子域名。
                 </p>
                 <Button
                   size="sm"
@@ -217,7 +215,7 @@ export function PublishDialog({
                   onClick={startEditDomain}
                 >
                   <GlobeIcon className="size-3.5" />
-                  Set domain
+                  设置域名
                 </Button>
               </div>
             )}
@@ -237,8 +235,8 @@ export function PublishDialog({
               </span>
               <span className="text-sm font-medium">
                 {repo.productionDeploymentId
-                  ? "Deployment live"
-                  : "Promote a deployment"}
+                  ? "部署已上线"
+                  : "提升一个部署"}
               </span>
             </div>
 
@@ -250,8 +248,7 @@ export function PublishDialog({
                     {latestLive.commitMessage}
                   </p>
                   <p className="text-xs text-muted-foreground/60">
-                    {formatRelativeTime(latestLive.commitDate)} · Ready to
-                    publish
+                    {formatRelativeTime(latestLive.commitDate)} · 准备发布
                   </p>
                 </div>
                 <Button
@@ -263,12 +260,12 @@ export function PublishDialog({
                   {isPromotingId === latestLive.deploymentId ? (
                     <>
                       <Loader2Icon className="size-3.5 animate-spin" />
-                      Publishing…
+                      发布中…
                     </>
                   ) : (
                     <>
                       <RocketIcon className="size-3.5" />
-                      Publish
+                      发布
                     </>
                   )}
                 </Button>
@@ -277,13 +274,13 @@ export function PublishDialog({
 
             {!hasDomain && items.length > 0 && (
               <p className="mb-2 pl-7 text-[13px] text-muted-foreground/60">
-                Set up a domain first, then you can publish a deployment.
+                请先设置域名，然后可以发布部署。
               </p>
             )}
 
             {items.length === 0 ? (
               <p className="py-1 pl-7 text-[13px] text-muted-foreground/40">
-                No deployments yet. Send a message to create your first build.
+                暂无部署记录。发送一条消息来创建你的第一个构建。
               </p>
             ) : (
               <div className="max-h-48 space-y-px overflow-y-auto pl-7">
@@ -332,7 +329,7 @@ export function PublishDialog({
                             <>
                               <span className="opacity-40">·</span>
                               <span className="font-medium text-emerald-400">
-                                production
+                                生产环境
                               </span>
                             </>
                           )}
@@ -354,7 +351,7 @@ export function PublishDialog({
                           {isPromoting ? (
                             <Loader2Icon className="size-3 animate-spin" />
                           ) : (
-                            "Publish"
+                            "发布"
                           )}
                         </Button>
                       )}

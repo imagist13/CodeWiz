@@ -1,6 +1,5 @@
-import { Assistant } from "./assistant";
-import { HomeWelcome } from "@/components/assistant-ui/home-welcome";
+import { HomeWorkspace } from "./home-workspace";
 
 export default function Home() {
-  return <Assistant welcome={<HomeWelcome />} />;
+  return <HomeWorkspace />;
 }

@@ -26,16 +26,16 @@ const formatRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
   const now = Date.now();
   const diffSeconds = Math.floor((now - date.getTime()) / 1000);
-  if (diffSeconds < 60) return "just now";
+  if (diffSeconds < 60) return "刚刚";
   const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours}小时前`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
+  return `${diffDays}天前`;
 };
 
-const AdorableLogo = () => (
+const CodeWizLogo = () => (
   <svg
     viewBox="0 0 347 280"
     fill="none"
@@ -116,8 +116,8 @@ export function RepoSidebar({
           <button
             type="button"
             onClick={() => onTabClick("threads")}
-            title="Projects"
-            aria-label="Projects"
+            title="项目"
+            aria-label="项目"
             className={`inline-flex size-7 items-center justify-center rounded-md transition-colors ${
               open && tab === "threads"
                 ? "bg-muted text-foreground"
@@ -129,8 +129,8 @@ export function RepoSidebar({
           <button
             type="button"
             onClick={() => onTabClick("deployments")}
-            title="Deployments"
-            aria-label="Deployments"
+            title="部署"
+            aria-label="部署"
             className={`inline-flex size-7 items-center justify-center rounded-md transition-colors ${
               open && tab === "deployments"
                 ? "bg-muted text-foreground"
@@ -147,9 +147,9 @@ export function RepoSidebar({
             {/* Brand header */}
             <div className="flex h-12 shrink-0 items-center justify-between px-3">
               <div className="flex items-center gap-2">
-                <AdorableLogo />
+                <CodeWizLogo />
                 <span className="text-sm font-semibold tracking-tight text-foreground">
-                  Adorable
+                  CodeWiz
                 </span>
               </div>
               <button
@@ -157,7 +157,7 @@ export function RepoSidebar({
                 className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
                 onClick={handleCreateRepo}
                 disabled={creatingRepo}
-                title="New project"
+                title="新建项目"
               >
                 <PlusIcon className="size-4" />
               </button>
@@ -204,7 +204,7 @@ function ProjectsList({
   if (repos.length === 0) {
     return (
       <div className="px-3 py-6 text-center text-xs text-muted-foreground/40">
-        No projects yet
+        暂无项目
       </div>
     );
   }
@@ -250,7 +250,7 @@ function DeploymentsList({
   if (!repo) {
     return (
       <div className="px-3 py-6 text-center text-xs text-muted-foreground/40">
-        Select a project first
+        请先选择一个项目
       </div>
     );
   }
@@ -274,7 +274,7 @@ function DeploymentsList({
       <div>
         <div className="flex items-center justify-between px-3 pb-1">
           <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50 uppercase">
-            Domain
+            域名
           </span>
           <ConfigureDomainDialog
             repo={repo}
@@ -294,7 +294,7 @@ function DeploymentsList({
             </a>
           ) : (
             <p className="py-1.5 text-[13px] text-muted-foreground/30">
-              Not configured
+              未配置
             </p>
           )}
         </div>
@@ -304,13 +304,13 @@ function DeploymentsList({
       <div>
         <div className="px-3 pb-1">
           <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50 uppercase">
-            Deployments
+            部署记录
           </span>
         </div>
 
         {items.length === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground/30">
-            No deployments yet
+            暂无部署记录
           </div>
         ) : (
           <div className="space-y-px">
@@ -357,7 +357,7 @@ function DeploymentsList({
                         <>
                           <span className="opacity-40">·</span>
                           <span className="font-medium text-emerald-400">
-                            prod
+                            生产
                           </span>
                         </>
                       )}
@@ -375,7 +375,7 @@ function DeploymentsList({
                             }}
                             disabled={isPromoting}
                           >
-                            {isPromoting ? "promoting…" : "promote"}
+                            {isPromoting ? "升级中…" : "升级"}
                           </button>
                         </>
                       )}
@@ -417,7 +417,7 @@ function ConfigureDomainDialog({
   const handleSave = async () => {
     const nextDomain = domainInput.trim().toLowerCase();
     if (!nextDomain.endsWith(".style.dev")) {
-      setError("Domain must end in .style.dev");
+      setError("域名必须以 .style.dev 结尾");
       return;
     }
 
@@ -430,7 +430,7 @@ function ConfigureDomainDialog({
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Failed to save domain",
+          : "保存域名失败",
       );
     } finally {
       setIsSaving(false);
@@ -443,17 +443,16 @@ function ConfigureDomainDialog({
         <button
           type="button"
           className="inline-flex size-5 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-foreground"
-          title="Configure production domain"
+          title="配置生产域名"
         >
           <SettingsIcon className="size-3" />
         </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Production Domain</DialogTitle>
+          <DialogTitle>生产环境域名</DialogTitle>
           <DialogDescription>
-            Set a custom <span className="font-medium">.style.dev</span> domain
-            for your production deployments.
+            为你的生产环境设置一个自定义的 <span className="font-medium">.style.dev</span> 域名。
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5">
@@ -477,16 +476,16 @@ function ConfigureDomainDialog({
             onClick={() => setOpen(false)}
             disabled={isSaving}
           >
-            Cancel
+            取消
           </Button>
           <Button type="button" onClick={handleSave} disabled={isSaving}>
             {isSaving ? (
               <>
                 <Loader2Icon className="size-4 animate-spin" />
-                Saving…
+                保存中…
               </>
             ) : (
-              "Save"
+              "保存"
             )}
           </Button>
         </DialogFooter>

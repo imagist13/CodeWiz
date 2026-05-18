@@ -16,6 +16,8 @@ type AuthContextType = {
   isAuthenticated: boolean;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  /** Pre-populate auth state so pages don't need to re-fetch after login/register. */
+  setUser: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +25,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Migrate token from adorable_token to codewiz_token
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const oldToken = localStorage.getItem("adorable_token");
+      if (oldToken) {
+        localStorage.setItem("codewiz_token", oldToken);
+        localStorage.removeItem("adorable_token");
+      }
+    }
+  }, []);
 
   const checkAuth = useCallback(async () => {
     if (!apiClient.isAuthenticated()) {
@@ -61,6 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const setAuthUser = useCallback((userData: User) => {
+    setUser(userData);
+    setIsLoading(false);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -69,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         logout,
         refreshUser,
+        setUser: setAuthUser,
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-module adorable-backend
+module codewiz-backend
 
 go 1.21
 

@@ -1,7 +1,7 @@
 package services
 
 import (
-	"adorable-backend/internal/repositories"
+	"codewiz-backend/internal/repositories"
 	"errors"
 	"fmt"
 	"time"

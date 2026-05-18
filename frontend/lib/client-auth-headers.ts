@@ -4,7 +4,7 @@ export function clientAuthHeaders(
 ): Record<string, string> {
   const headers = { ...base };
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("adorable_token");
+    const token = localStorage.getItem("codewiz_token");
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }

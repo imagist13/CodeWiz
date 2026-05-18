@@ -1,5 +1,5 @@
 /**
- * API Client for Adorable Backend
+ * API Client for CodeWiz Backend
  * Handles authentication and API calls to Go backend and AI service
  */
 
@@ -100,25 +100,25 @@ class ApiClient {
 
   constructor() {
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("adorable_token");
+      this.token = localStorage.getItem("codewiz_token");
     }
   }
 
   setToken(token: string) {
     this.token = token;
     if (typeof window !== "undefined") {
-      localStorage.setItem("adorable_token", token);
+      localStorage.setItem("codewiz_token", token);
       // Also set cookie for server-side API routes
-      document.cookie = `adorable_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      document.cookie = `codewiz_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
     }
   }
 
   clearToken() {
     this.token = null;
     if (typeof window !== "undefined") {
-      localStorage.removeItem("adorable_token");
+      localStorage.removeItem("codewiz_token");
       // Also clear cookie
-      document.cookie = "adorable_token=; path=/; max-age=0";
+      document.cookie = "codewiz_token=; path=/; max-age=0";
     }
   }
 
@@ -148,7 +148,7 @@ class ApiClient {
     };
 
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("adorable_token");
+      this.token = localStorage.getItem("codewiz_token");
     }
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
@@ -181,7 +181,7 @@ class ApiClient {
     };
 
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("adorable_token");
+      this.token = localStorage.getItem("codewiz_token");
     }
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
@@ -224,7 +224,7 @@ class ApiClient {
 
   isAuthenticated(): boolean {
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("adorable_token");
+      this.token = localStorage.getItem("codewiz_token");
     }
     return !!this.token;
   }
@@ -320,7 +320,7 @@ class ApiClient {
     conversationId: string
   ): AsyncGenerator<any, void, unknown> {
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("adorable_token");
+      this.token = localStorage.getItem("codewiz_token");
     }
     const response = await this.requestRaw(`${AI_SERVICE_URL}/api/chat`, {
       method: "POST",

@@ -32,13 +32,13 @@ export const HomeWelcome: FC = () => {
   const handleUseGithubRepo = () => {
     const githubRepoName = githubRepoInput.trim();
     if (!githubRepoName.includes("/")) {
-      setGithubRepoError("Repository must be in owner/repo format");
+      setGithubRepoError("仓库格式必须为 owner/repo");
       return;
     }
 
     setGithubRepoError(null);
     window.dispatchEvent(
-      new CustomEvent("adorable:create-from-github", {
+      new CustomEvent("codewiz:create-from-github", {
         detail: { githubRepoName },
       }),
     );
@@ -88,18 +88,18 @@ export const HomeWelcome: FC = () => {
           </svg>
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              What do you want to build?
+              你想构建什么？
             </h1>
             <p className="text-sm text-muted-foreground/60">
-              Sign in to create and manage your projects
+              登录以创建和管理你的项目
             </p>
           </div>
           <div className="flex gap-3">
             <Button size="lg" asChild className="gap-2">
-              <Link href="/auth/login">Sign in</Link>
+              <Link href="/auth/login">登录</Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="gap-2">
-              <Link href="/auth/register">Register</Link>
+              <Link href="/auth/register">注册</Link>
             </Button>
           </div>
         </div>
@@ -171,10 +171,10 @@ export const HomeWelcome: FC = () => {
             />
           </svg>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            What do you want to build?
+            你想构建什么？
           </h1>
           <p className="text-sm text-muted-foreground/60">
-            Describe an app or pick up where you left off
+            描述你想要的应用，或继续上次的项目
           </p>
         </div>
 
@@ -221,7 +221,7 @@ export const HomeWelcome: FC = () => {
                       <div className="relative aspect-16/10 w-full overflow-hidden bg-muted/30">
                         <div className="flex h-full items-center justify-center">
                           <span className="text-xs text-muted-foreground/30">
-                            No preview
+                            无预览
                           </span>
                         </div>
                         {/* Status dot */}
@@ -235,7 +235,7 @@ export const HomeWelcome: FC = () => {
                           {repo.name}
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground/50">
-                          Open to start chatting
+                          点击开始对话
                         </p>
                       </div>
                     </button>
@@ -254,7 +254,7 @@ export const HomeWelcome: FC = () => {
                   } as React.CSSProperties
                 }
               >
-                Import from GitHub
+                从 GitHub 导入
               </button>
             </>
           ) : null}
@@ -264,9 +264,9 @@ export const HomeWelcome: FC = () => {
       <Dialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Use GitHub Repo</DialogTitle>
+            <DialogTitle>使用 GitHub 仓库</DialogTitle>
             <DialogDescription>
-              Enter a repository in owner/repo format.
+              输入仓库地址，格式为 owner/repo。
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -276,7 +276,7 @@ export const HomeWelcome: FC = () => {
                 setGithubRepoInput(event.target.value);
                 setGithubRepoError(null);
               }}
-              placeholder="owner/repository"
+              placeholder="所有者/仓库名称"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -294,10 +294,10 @@ export const HomeWelcome: FC = () => {
               variant="ghost"
               onClick={() => setGithubDialogOpen(false)}
             >
-              Cancel
+              取消
             </Button>
             <Button type="button" onClick={handleUseGithubRepo}>
-              Create Project
+              创建项目
             </Button>
           </DialogFooter>
         </DialogContent>
