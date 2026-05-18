@@ -1,52 +1,80 @@
-This is an [assistant-ui](https://github.com/Yonom/assistant-ui) project with provider-agnostic backend routing and repo-backed conversation persistence.
+# CodeWiz Frontend
 
-## Getting Started
+Next.js 16 前端，负责任务：
 
-### 1. Install Dependencies
+- 🎨 AI 对话界面（基于 assistant-ui）
+- 📦 项目管理（创建 / 导入 / 删除）
+- 🖥️ 实时预览（预览 iframe + 终端 iframe）
+- 🔐 JWT 认证（登录 / 注册 / 登出）
+- 🌐 项目工作区（Repo Workspace + 会话管理）
+
+## 技术栈
+
+| 技术 | 说明 |
+|------|------|
+| Next.js 16 | App Router + Server Actions + Turbopack |
+| TypeScript | 类型安全 |
+| Tailwind CSS 4 | 原子化样式 |
+| Zustand | 轻量状态管理 |
+| Vercel AI SDK | 流式对话支持 |
+| assistant-ui | 对话 UI 组件库 |
+
+## 目录结构
+
+```
+frontend/
+├── app/
+│   ├── layout.tsx              # 根布局（字体、主题、认证 Provider）
+│   ├── page.tsx                # 首页（项目列表）
+│   ├── auth/
+│   │   ├── login/page.tsx     # 登录页
+│   │   └── register/page.tsx  # 注册页
+│   ├── [repoId]/
+│   │   ├── page.tsx           # 项目工作区（侧边栏 + 对话 + 预览）
+│   │   └── [conversationId]/  # 会话详情
+│   └── api/
+│       ├── chat/route.ts      # SSE 流式对话代理
+│       └── sandbox-*/         # 预览 / 终端代理（路由到 AI 服务）
+│
+├── components/
+│   └── assistant-ui/           # 对话 UI 组件（消息、工具调用、附件、思维链）
+│
+└── lib/
+    ├── auth-context.tsx        # 认证状态（Zustand）
+    ├── repos-context.tsx       # 项目列表状态
+    └── repo-types.ts          # RepoItem / RepoVmInfo / RepoDeployment 类型
+```
+
+## 快速开始
 
 ```bash
+# 安装依赖
 npm install
-# or
-yarn install
-# or
-pnpm install
-# or
-bun install
-```
 
-### 1. Run the Development Server
-
-```bash
+# 开发模式
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# 生产构建
+npm run build
+
+# 代码检查
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 环境变量
 
-### 2. (Optional) Set Up GitHub Sync
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | Go 后端地址 |
+| `NEXT_PUBLIC_AI_SERVICE_URL` | `http://localhost:8000` | AI 服务地址 |
 
-To enable creating projects from existing GitHub repositories:
+## 关键文件说明
 
-1. Follow the [GitHub App Setup Guide](../GITHUB_APP_SETUP.md)
-2. Create a GitHub App through the [Freestyle Dashboard](https://dash.freestyle.sh/)
-3. Install the GitHub App on your GitHub repositories
-4. Use the "From GitHub" option when creating new projects
-
-See [GITHUB_APP_SETUP.md](../GITHUB_APP_SETUP.md) for detailed instructions.
-
-## Development
-
-You can start customizing the UI by modifying components in the `components/assistant-ui/` directory.
-
-### Key Files
-
-- `app/assistant.tsx` - Renders the chat interface and sets up the assistant runtime
-- `app/api/chat/route.ts` - Chat API endpoint
-- `lib/llm-provider.ts` - Provider wrapper (OpenAI + Claude)
-- `components/assistant-ui/thread.tsx` - Chat thread component
-- `components/app-sidebar.tsx` - Sidebar with thread list
+| 文件 | 作用 |
+|------|------|
+| `app/assistant.tsx` | AI 对话核心组件（集成 Vercel AI SDK） |
+| `app/api/chat/route.ts` | SSE 流式对话 API 路由 |
+| `app/[repoId]/repo-workspace-shell.tsx` | 项目工作区外壳（预览 + 终端布局） |
+| `components/preview/app-preview.tsx` | 实时预览组件（预览 iframe + 终端 tabs） |
+| `lib/auth-context.tsx` | JWT Token 管理与认证状态 |
+| `lib/repos-context.tsx` | 项目列表与当前项目状态管理 |

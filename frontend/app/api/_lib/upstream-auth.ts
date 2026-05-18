@@ -42,7 +42,7 @@ export async function getUpstreamAuthHeaders(
 /** 从 localStorage 取 token并注入到 URL query（用于 iframe 场景） */
 export function appendAuthParam(url: string): string {
   if (typeof window === "undefined") return url;
-  const token = localStorage.getItem("adorable_token");
+  const token = localStorage.getItem("codewiz_token");
   if (!token) return url;
   try {
     const u = new URL(url, window.location.href);

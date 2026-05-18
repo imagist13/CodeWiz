@@ -69,7 +69,7 @@ const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
   return (
     <img
       src={src}
-      alt="Image Preview"
+      alt="图片预览"
       className={cn(
         "block h-auto max-h-[80vh] w-auto max-w-full object-contain",
         isLoaded
@@ -96,7 +96,7 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
       </DialogTrigger>
       <DialogContent className="aui-attachment-preview-dialog-content p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:bg-foreground/60 [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0! [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive">
         <DialogTitle className="aui-sr-only sr-only">
-          Image Attachment Preview
+          图片附件预览
         </DialogTitle>
         <div className="aui-attachment-preview relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden bg-background">
           <AttachmentPreview src={src} />
@@ -116,7 +116,7 @@ const AttachmentThumb: FC = () => {
     <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none">
       <AvatarImage
         src={src}
-        alt="Attachment preview"
+        alt="附件预览"
         className="aui-attachment-tile-image object-cover"
       />
       <AvatarFallback delayMs={isImage ? 200 : 0}>
@@ -137,13 +137,13 @@ const AttachmentUI: FC = () => {
     const type = attachment.type;
     switch (type) {
       case "image":
-        return "Image";
+        return "图片";
       case "document":
-        return "Document";
+        return "文档";
       case "file":
-        return "File";
+        return "文件";
       default:
-        return "File";
+        return "文件";
     }
   });
 
@@ -166,7 +166,7 @@ const AttachmentUI: FC = () => {
               )}
               role="button"
               id="attachment-tile"
-              aria-label={`${typeLabel} attachment`}
+              aria-label={`${typeLabel} 附件`}
             >
               <AttachmentThumb />
             </div>
@@ -185,7 +185,7 @@ const AttachmentRemove: FC = () => {
   return (
     <AttachmentPrimitive.Remove asChild>
       <TooltipIconButton
-        tooltip="Remove file"
+        tooltip="移除文件"
         className="aui-attachment-tile-remove absolute top-1.5 right-1.5 size-3.5 rounded-full bg-white text-muted-foreground opacity-100 shadow-sm hover:bg-white! [&_svg]:text-black hover:[&_svg]:text-destructive"
         side="top"
       >
@@ -217,12 +217,12 @@ export const ComposerAddAttachment: FC = () => {
   return (
     <ComposerPrimitive.AddAttachment asChild>
       <TooltipIconButton
-        tooltip="Add Attachment"
+        tooltip="添加附件"
         side="bottom"
         variant="ghost"
         size="icon"
         className="aui-composer-add-attachment size-8.5 rounded-full p-1 font-semibold text-xs hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
-        aria-label="Add Attachment"
+        aria-label="添加附件"
       >
         <PlusIcon className="aui-attachment-add-icon size-5 stroke-[1.5px]" />
       </TooltipIconButton>

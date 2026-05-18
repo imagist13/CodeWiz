@@ -29,9 +29,9 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Database — 支持 SQLAlchemy URL（postgresql://...）和 libpq 格式（host=... port=...）
-    # .env 里写 DATABASE_URL=host=localhost user=postgres password=postgres dbname=adorable port=5432 sslmode=disable
-    # 也可以直接写 postgresql://postgres:postgres@localhost:5432/adorable
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/adorable"
+    # .env 里写 DATABASE_URL=host=localhost user=postgres password=postgres dbname=codewiz port=5432 sslmode=disable
+    # 也可以直接写 postgresql://postgres:postgres@localhost:5432/codewiz
+    database_url: str = "postgresql://postgres:postgres@localhost:5432/codewiz"
 
     @model_validator(mode="after")
     def _fix_database_url(self):
@@ -48,13 +48,13 @@ class Settings(BaseSettings):
                 f"{parts.get('password', 'postgres')}@"
                 f"{parts.get('host', 'localhost')}:"
                 f"{parts.get('port', '5432')}/"
-                f"{parts.get('dbname', 'adorable')}"
+                f"{parts.get('dbname', 'codewiz')}"
                 f"?sslmode={parts.get('sslmode', 'disable')}"
             )
         return self
 
     # JWT (must match Go backend JWT_SECRET)
-    jwt_secret: str = "adorable-dev-secret-change-in-prod"
+    jwt_secret: str = "codewiz-dev-secret-change-in-prod"
 
     # Go backend URL (for token validation)
     backend_url: str = "http://localhost:8080"

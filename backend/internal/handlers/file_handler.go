@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"adorable-backend/internal/middleware"
-	"adorable-backend/internal/services"
-	"adorable-backend/pkg/response"
+	"codewiz-backend/internal/middleware"
+	"codewiz-backend/internal/services"
+	"codewiz-backend/pkg/response"
 	"os"
 
 	"github.com/gin-gonic/gin"

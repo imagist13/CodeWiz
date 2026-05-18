@@ -1,4 +1,4 @@
-# Adorable Backend
+# CodeWiz Backend
 
 基于 Go + Gin + GORM 构建的后端服务，提供用户认证、项目管理、AI 对话会话等功能。
 
@@ -26,7 +26,7 @@
 
 ```env
 SERVER_PORT=8080
-DATABASE_URL=host=localhost user=postgres password=postgres dbname=adorable port=5432 sslmode=disable
+DATABASE_URL=host=localhost user=postgres password=postgres dbname=codewiz port=5432 sslmode=disable
 JWT_SECRET=your-secret-key-here
 ```
 
@@ -37,8 +37,8 @@ JWT_SECRET=your-secret-key-here
 go run cmd/server/main.go
 
 # Docker 运行
-docker build -t adorable-backend .
-docker run -p 8080:8080 --env-file .env adorable-backend
+docker build -t codewiz-backend .
+docker run -p 8080:8080 --env-file .env codewiz-backend
 ```
 
 ## 项目结构

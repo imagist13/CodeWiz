@@ -9,22 +9,29 @@ type ActiveConversationDetail = {
   conversationId: string;
 };
 
+/**
+ * Top-level layout coordinator.
+ *
+ * Responsibilities:
+ * 1. Parse URL → repoId / conversationId
+ * 2. Handle in-app navigation events from child components
+ * 3. Render the shared workspace shell with the correct repo context
+ *
+ * All child components communicate upward purely through named events
+ * (`codewiz:go-home`, `codewiz:go-to-repo`, `codewiz:active-conversation`).
+ */
 export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const pathParts = useMemo(
-    () => pathname.split("/").filter(Boolean),
-    [pathname],
-  );
+  const pathParts = useMemo(() => pathname.split("/").filter(Boolean), [pathname]);
 
   const routeRepoId = pathParts[0] ?? null;
   const routeConversationId = pathParts[1] ?? null;
 
   const [activeRepoId, setActiveRepoId] = useState<string | null>(null);
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | null
-  >(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const previousPathnameRef = useRef(pathname);
 
+  // Sync state from URL changes
   useEffect(() => {
     if (routeRepoId) {
       setActiveRepoId(routeRepoId);
@@ -32,71 +39,48 @@ export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
     }
   }, [routeConversationId, routeRepoId]);
 
+  // Reset to home when navigating to root
   useEffect(() => {
-    const previousPathname = previousPathnameRef.current;
-    if (pathname === "/" && previousPathname !== "/") {
+    const prev = previousPathnameRef.current;
+    if (pathname === "/" && prev !== "/") {
       setActiveRepoId(null);
       setActiveConversationId(null);
     }
     previousPathnameRef.current = pathname;
   }, [pathname]);
 
+  // Respond to `active-conversation` events from the assistant
   useEffect(() => {
-    const handleActiveConversation = (event: Event) => {
-      const customEvent = event as CustomEvent<ActiveConversationDetail>;
-      const detail = customEvent.detail;
-      if (!detail?.repoId || !detail?.conversationId) {
-        return;
-      }
-
-      setActiveRepoId(detail.repoId);
-      setActiveConversationId(detail.conversationId);
+    const handler = (event: Event) => {
+      const { repoId, conversationId } = (event as CustomEvent<ActiveConversationDetail>).detail ?? {};
+      if (!repoId || !conversationId) return;
+      setActiveRepoId(repoId);
+      setActiveConversationId(conversationId);
     };
-
-    window.addEventListener(
-      "adorable:active-conversation",
-      handleActiveConversation as EventListener,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "adorable:active-conversation",
-        handleActiveConversation as EventListener,
-      );
-    };
+    window.addEventListener("codewiz:active-conversation", handler as EventListener);
+    return () => window.removeEventListener("codewiz:active-conversation", handler as EventListener);
   }, []);
 
+  // Respond to `go-home` events from any child component
   useEffect(() => {
-    const handleGoHome = () => {
+    const handler = () => {
       setActiveRepoId(null);
       setActiveConversationId(null);
     };
-
-    window.addEventListener("adorable:go-home", handleGoHome);
-    return () => {
-      window.removeEventListener("adorable:go-home", handleGoHome);
-    };
+    window.addEventListener("codewiz:go-home", handler);
+    return () => window.removeEventListener("codewiz:go-home", handler);
   }, []);
 
+  // Respond to `go-to-repo` events from any child component
   useEffect(() => {
-    const handleGoToRepo = (event: Event) => {
-      const customEvent = event as CustomEvent<{ repoId: string }>;
-      const detail = customEvent.detail;
-      if (!detail?.repoId) return;
-      setActiveRepoId(detail.repoId);
+    const handler = (event: Event) => {
+      const { repoId } = (event as CustomEvent<{ repoId: string }>).detail ?? {};
+      if (!repoId) return;
+      setActiveRepoId(repoId);
       setActiveConversationId(null);
     };
-
-    window.addEventListener(
-      "adorable:go-to-repo",
-      handleGoToRepo as EventListener,
-    );
-    return () => {
-      window.removeEventListener(
-        "adorable:go-to-repo",
-        handleGoToRepo as EventListener,
-      );
-    };
+    window.addEventListener("codewiz:go-to-repo", handler as EventListener);
+    return () => window.removeEventListener("codewiz:go-to-repo", handler as EventListener);
   }, []);
 
   const effectiveRepoId = routeRepoId ?? activeRepoId;
@@ -108,7 +92,6 @@ export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
       selectedConversationIdOverride={effectiveConversationId}
     >
       {children}
-      {/* Settings button */}
     </RepoWorkspaceShell>
   );
 }

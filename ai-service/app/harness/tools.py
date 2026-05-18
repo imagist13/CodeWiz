@@ -34,8 +34,6 @@ def get_current_token() -> Optional[str]:
 def _sandbox_root() -> str:
     """
     必须与 sandbox_manager.SANDBOX_ROOT 完全一致。
-    此前 tools 默认用 /tmp/adorable-sandbox，而 Windows 上 manager 用 %TEMP%，
-    导致文件写在一处、http.server 在另一处 → 预览「Directory listing for /」为空。
     """
     from app.harness.sandbox.sandbox_manager import SANDBOX_ROOT
 
@@ -60,7 +58,7 @@ def _preview_host() -> str:
 def _project_dir() -> str:
     """
     返回当前项目的代码目录。
-    如果有 repo_id → /tmp/adorable-sandbox/<repo_id>/
+    如果有 repo_id → /tmp/codewiz-sandbox/<repo_id>/
     否则 → 当前工作目录（向后兼容）
     """
     repo_id = get_current_repo_id()

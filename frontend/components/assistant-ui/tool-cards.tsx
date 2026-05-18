@@ -164,7 +164,7 @@ export const BashToolCard: ToolCallMessagePartComponent = ({
           <TerminalIcon className="size-3.5 shrink-0 text-muted-foreground" />
         )
       }
-      label={running ? "Running" : "Ran"}
+      label={running ? "执行中" : "已执行"}
       detail={cmd}
       status={status}
       expandContent={
@@ -194,7 +194,7 @@ export const ReadFileToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Reading" : "Read"}
+      label={running ? "读取中" : "已读取"}
       detail={str(a.file)}
       status={status}
       expandContent={r.content ? <DetailBlock data={r.content} /> : undefined}
@@ -211,7 +211,7 @@ export const WriteFileToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Writing" : "Wrote"}
+      label={running ? "写入中" : "已写入"}
       detail={str(a.file)}
       status={status}
     />
@@ -229,7 +229,7 @@ export const ListFilesToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Listing" : "Listed"}
+      label={running ? "列出中" : "已列出"}
       detail={str(a.path)}
       status={status}
       expandContent={r.stdout ? <DetailBlock data={r.stdout} /> : undefined}
@@ -248,7 +248,7 @@ export const SearchFilesToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Searching" : "Searched"}
+      label={running ? "搜索中" : "已搜索"}
       detail={str(a.query) ? `"${a.query}"` : undefined}
       status={status}
       expandContent={r.stdout ? <DetailBlock data={r.stdout} /> : undefined}
@@ -265,7 +265,7 @@ export const ReplaceInFileToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Editing" : "Edited"}
+      label={running ? "编辑中" : "已编辑"}
       detail={str(a.file)}
       status={status}
     />
@@ -281,7 +281,7 @@ export const AppendToFileToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Appending" : "Appended"}
+      label={running ? "追加中" : "已追加"}
       detail={str(a.file)}
       status={status}
     />
@@ -297,7 +297,7 @@ export const MakeDirectoryToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Creating dir" : "Created dir"}
+      label={running ? "创建目录中" : "已创建目录"}
       detail={str(a.path)}
       status={status}
     />
@@ -313,7 +313,7 @@ export const MovePathToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Moving" : "Moved"}
+      label={running ? "移动中" : "已移动"}
       detail={str(a.from) && str(a.to) ? `${a.from} → ${a.to}` : str(a.from)}
       status={status}
     />
@@ -329,7 +329,7 @@ export const DeletePathToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Deleting" : "Deleted"}
+      label={running ? "删除中" : "已删除"}
       detail={str(a.path)}
       status={status}
     />
@@ -364,7 +364,7 @@ export const CommitToolCard: ToolCallMessagePartComponent = ({
           <GitCommitHorizontalIcon className="size-3.5 shrink-0 text-muted-foreground" />
         )
       }
-      label={running ? "Committing…" : failed ? "Commit failed" : "Committed"}
+      label={running ? "提交中…" : failed ? "提交失败" : "已提交"}
       detail={message}
       status={status}
       failed={failed}
@@ -398,10 +398,10 @@ export const CheckAppToolCard: ToolCallMessagePartComponent = ({
       </span>
       <span className="font-medium">
         {running
-          ? "Checking app…"
+          ? "检查应用中…"
           : isOk
-            ? "App is healthy"
-            : "App returned an error"}
+            ? "应用运行正常"
+            : "应用返回错误"}
       </span>
       {!running && statusCode !== null && (
         <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
@@ -426,8 +426,8 @@ export const DevServerLogsToolCard: ToolCallMessagePartComponent = ({
 
   return (
     <ToolLine
-      label={running ? "Reading dev logs" : "Dev logs"}
-      detail={maxLines ? `last ${maxLines}` : undefined}
+      label={running ? "读取开发日志" : "开发日志"}
+      detail={maxLines ? `最后 ${maxLines}` : undefined}
       status={status}
       expandContent={r.logs ? <DetailBlock data={r.logs} /> : undefined}
     />
@@ -465,10 +465,10 @@ export const DeploymentStatusToolCard: ToolCallMessagePartComponent = ({
       </span>
       <span className="font-medium">
         {running
-          ? "Deploying…"
+          ? "部署中…"
           : isLive
-            ? "Deployment is live"
-            : "Deployment pending"}
+            ? "部署已完成"
+            : "等待部署"}
       </span>
       {!running && statusCode !== null && (
         <span

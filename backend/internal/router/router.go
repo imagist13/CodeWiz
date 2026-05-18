@@ -1,10 +1,10 @@
 package router
 
 import (
-	"adorable-backend/internal/config"
-	"adorable-backend/internal/handlers"
-	"adorable-backend/internal/middleware"
-	"adorable-backend/internal/services"
+	"codewiz-backend/internal/config"
+	"codewiz-backend/internal/handlers"
+	"codewiz-backend/internal/middleware"
+	"codewiz-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
