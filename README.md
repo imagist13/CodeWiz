@@ -84,6 +84,26 @@ docker compose up -d --build
 
 LLM 通过 **SSE 流式输出**，前端逐字渲染。Agent 循环：`LLM 思考 → 调用工具 → 读取结果 → 再次思考`，直到任务完成。
 
+### 💾 多轮对话持久化记忆系统
+
+基于 LangChain 原生实现的智能对话记忆，支持：
+- 按 conversation_id 完全隔离存储
+- 无网络依赖字符数经验估算 Token 数
+- 自动智能窗口截断（超过 8000 Token / 50 条消息自动清理最老历史）
+- 本地 JSON 持久化，服务重启记忆不丢失
+- 完全兼容 LangChain BaseChatMessageHistory 接口标准
+
+### 🔧 AI 服务预装 Node.js 18 LTS
+
+AI 容器出厂预装 Node.js v18.20.4 和 npm v10.7.0，开箱即可 `npm install` 构建任意前端项目，无需额外安装。
+
+### 🔒 安全沙箱加固
+
+- 完全移除 shell=True 命令注入风险，改用 shlex.split 安全解析命令参数
+- Windows 平台使用 taskkill /F /T 完整终止整个进程树，不留僵尸进程
+- 所有 dev server / static server 日志自动持久化到项目目录 `.codewiz-logs/`，方便事后排查
+- 跨平台沙箱目录自动适配：Windows %TEMP% 或 Linux /tmp
+
 ### 🔐 完整认证体系
 
 JWT 全链路鉴权（注册 → 登录 → Token 生成 → 中间件验证 → AI 服务回调验证），覆盖所有 API。
@@ -279,6 +299,11 @@ git push origin feature/your-feature
 - ✅ Docker Compose 一键部署
 - ✅ 确定性沙箱端口映射
 - ✅ GitHub 仓库导入
+- ✅ **v1.1 新增**：多轮对话持久化记忆系统（基于 LangChain）
+- ✅ **v1.1 新增**：Agent 完全异步化，工具调用在线程池执行不阻塞事件循环
+- ✅ **v1.1 新增**：AI 服务预装 Node.js v18.20.4 + npm v10.7.0，开箱即用
+- ✅ **v1.1 修复**：沙箱安全加固（完全移除 shell=True 命令注入风险，跨平台进程树终止，自动日志持久化）
+- ✅ **v1.1 修复**：历史对话丢失 Bug（conversation_id 绑定持久化记忆）
 
 ***
 
