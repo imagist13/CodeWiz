@@ -1,4 +1,5 @@
 """Chat API endpoint — uses LangChain AgentLoop"""
+import logging
 import uuid as uuid_mod
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -8,7 +9,17 @@ from app.core.database import get_db
 from app.models.database import Message, Conversation
 from app.models.schemas import ChatRequest
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api", tags=["chat"])
+
+
+def _to_uuid(val: str):
+    """Accept UUID strings or short IDs — convert to UUID for DB operations."""
+    try:
+        return uuid_mod.UUID(str(val))
+    except (ValueError, AttributeError):
+        return str(val)
 
 SYSTEM_PROMPT = """You are an AI coding assistant built with the Adorable framework.
 
@@ -24,8 +35,12 @@ You have access to tools that let you:
 1. User asks to build something
 2. Write files using writeFileTool
 3. Call startDevServerTool() to start the preview server
-4. Call updateProjectPreviewTool(previewUrl=<URL from step 3>) to save it to the backend
+4. Call updateProjectPreviewTool({previewUrl: <URL from step 3>}) to save it to the backend
 5. Tell the user: "Your app is visible in the right-side preview panel"
+
+**IMPORTANT: Context & Memory**
+- You ARE able to remember previous messages in this conversation. When this conversation resumes, you will receive the full message history — use it to understand context, follow up on previous requests, and maintain continuity.
+- Always be aware of what the user asked previously in this session.
 
 The startDevServerTool returns a proxy preview URL like /api/sandbox-preview/<repoId>.
 Always pass this URL to updateProjectPreviewTool. Do NOT construct URLs manually.
@@ -73,8 +88,9 @@ async def chat(
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
 
+    conv_uuid = _to_uuid(request.conversation_id)
     conversation = db.query(Conversation).filter(
-        Conversation.id == request.conversation_id
+        Conversation.id == conv_uuid
     ).first()
 
     if not conversation:
@@ -83,6 +99,7 @@ async def chat(
     # Build messages dict list from request
     messages_for_agent = []
     new_user_message: str = ""
+    logger.warning(f"[chat] Received request with {len(request.messages)} messages, conversation_id={request.conversation_id}")
     for msg in request.messages:
         msg_dict = {"role": msg.role, "id": msg.id, "parts": []}
         full_content = ""
@@ -101,6 +118,9 @@ async def chat(
             new_user_message = full_content
         messages_for_agent.append(msg_dict)
 
+    if messages_for_agent:
+        logger.warning(f"[chat] messages_for_agent: {messages_for_agent[:2]}...")  # first 2 for debugging
+
     from app.harness.agent import AgentLoop
     from app.harness import tools as tool_module
 
@@ -109,7 +129,7 @@ async def chat(
     tool_module.set_current_context(repo_id, token)
 
     # 用数据库里的 conversation_id（转字符串）作为记忆持久化的唯一 key
-    conversation_id_str = str(request.conversation_id)
+    conversation_id_str = str(conv_uuid)
     agent = AgentLoop(system=SYSTEM_PROMPT, conversation_id=conversation_id_str)
 
     # 把从前端/数据库读出来的历史消息导入持久化记忆（避免每次重启丢失）
@@ -123,13 +143,13 @@ async def chat(
             try:
                 if new_user_message:
                     db.add(Message(
-                        conversation_id=request.conversation_id,
+                        conversation_id=conv_uuid,
                         role="user",
                         content=new_user_message,
                     ))
                     db.commit()
             except Exception:
-                pass
+                logger.exception("[chat] Failed to save user message to DB")
 
             async for event in agent.run(new_user_message):
                 if event.type == "content":
@@ -180,13 +200,13 @@ async def chat(
                     # Save assistant message
                     try:
                         db.add(Message(
-                            conversation_id=request.conversation_id,
+                            conversation_id=conv_uuid,
                             role="assistant",
                             content=event.content,
                         ))
                         db.commit()
                     except Exception:
-                        pass
+                        logger.exception("[chat] Failed to save assistant message to DB")
 
                 elif event.type == "error":
                     if stream_text_id:

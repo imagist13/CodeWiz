@@ -62,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiClient.logout();
     } finally {
       setUser(null);
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/login";
+      }
     }
   }, []);
 

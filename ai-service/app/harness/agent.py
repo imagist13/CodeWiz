@@ -83,7 +83,11 @@ class AgentLoop:
 
     def _import_external_messages(self, messages: List[Dict[str, Any]]) -> None:
         """把外部传入的历史消息导入持久化记忆（如果当前记忆是空的话）"""
+        import logging
+        logger = logging.getLogger("agent")
+        logger.warning(f"[AgentLoop] _import_external_messages called, memory has {len(self._memory.messages)} messages, will import {len(messages)} external")
         if len(self._memory.messages) > 1:  # 除了 SystemMessage 之外还有内容，说明已经有历史了，不用重复导入
+            logger.warning(f"[AgentLoop] Memory already has history, skipping import")
             return
         for raw_msg in messages:
             role = raw_msg.get("role", "user")

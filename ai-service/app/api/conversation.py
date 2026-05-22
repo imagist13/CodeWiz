@@ -1,7 +1,8 @@
 """
 Conversation API endpoint
 """
-import uuid
+import logging
+import uuid as uuid_mod
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -10,7 +11,17 @@ from app.core.database import get_db
 from app.models.database import Conversation, Message
 from app.models.schemas import ConversationCreate, ConversationResponse
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/repos", tags=["conversations"])
+
+
+def _to_uuid(val: str):
+    """Accept both raw UUID strings and short IDs — convert to UUID for DB lookups."""
+    try:
+        return uuid_mod.UUID(val)
+    except (ValueError, AttributeError):
+        return val
 
 
 @router.get("/{repo_id}/conversations", response_model=List[ConversationResponse])
@@ -20,7 +31,7 @@ async def list_conversations(
     db: Session = Depends(get_db)
 ):
     conversations = db.query(Conversation).filter(
-        Conversation.project_id == repo_id
+        Conversation.project_id == _to_uuid(repo_id)
     ).order_by(Conversation.created_at.desc()).all()
 
     return [
@@ -42,8 +53,10 @@ async def create_conversation(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    project_uuid = _to_uuid(repo_id)
+    logger.info(f"[conversation] Creating conversation for project_id={project_uuid}, title={request.title}")
     conversation = Conversation(
-        project_id=repo_id,
+        project_id=project_uuid,
         title=request.title or f"Conversation"
     )
     db.add(conversation)
@@ -66,16 +79,20 @@ async def get_conversation(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    conv_uuid = _to_uuid(conversation_id)
     conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id
+        Conversation.id == conv_uuid
     ).first()
 
     if not conversation:
+        logger.warning(f"[conversation] Conversation not found: id={conversation_id}")
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     messages = db.query(Message).filter(
-        Message.conversation_id == conversation_id
+        Message.conversation_id == conv_uuid
     ).order_by(Message.created_at.asc()).all()
+
+    logger.info(f"[conversation] GET conversation_id={conversation_id}, messages_count={len(messages)}")
 
     return {
         "id": str(conversation.id),
@@ -101,8 +118,9 @@ async def delete_conversation(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    conv_uuid = _to_uuid(conversation_id)
     conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id
+        Conversation.id == conv_uuid
     ).first()
 
     if not conversation:

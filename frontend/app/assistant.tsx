@@ -6,7 +6,7 @@ import { useChat } from "@ai-sdk/react";
 import { type UIMessage } from "ai";
 import { Thread } from "@/components/assistant-ui/thread";
 import { clientAuthHeaders } from "@/lib/client-auth-headers";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   useCreateFromGithub,
@@ -15,6 +15,10 @@ import {
   useThreadStateSync,
   type ThreadState,
 } from "@/hooks/use-app-events";
+import {
+  setCachedMessages,
+  type CachedMessage,
+} from "@/lib/message-cache";
 
 const EMPTY_MESSAGES: UIMessage[] = [];
 
@@ -29,18 +33,30 @@ const extractUserPrompt = (messages: UIMessage[]): string | null => {
   return clean || null;
 };
 
-function convertBackendMessagesToUIMessages(messages: any[]): UIMessage[] {
+export function convertBackendMessagesToUIMessages(messages: any[]): UIMessage[] {
   if (!Array.isArray(messages)) return [];
   return messages.map((m): UIMessage => {
+    const role = m.role as string;
     return {
       id: m.id ?? crypto.randomUUID(),
-      role: (m.role as any) === "assistant" ? "assistant" : "user",
+      role: role === "assistant" ? "assistant" : "user",
       parts: [
         {
           type: "text",
           text: (m.content as string) ?? "",
         },
       ],
+    };
+  });
+}
+
+function uiMessagesToCache(messages: UIMessage[]): CachedMessage[] {
+  return messages.map((m) => {
+    const textPart = m.parts?.find((p) => p.type === "text");
+    return {
+      id: m.id,
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: textPart && "text" in textPart ? textPart.text : "",
     };
   });
 }
@@ -65,6 +81,8 @@ export const Assistant = ({
   const [seedMessages, setSeedMessages] = useState<UIMessage[]>(resolvedInitialMessages);
   const [runtimeVersion, setRuntimeVersion] = useState(0);
   const lastMessagesLengthRef = useRef(0);
+  const messagesRef = useRef<UIMessage[]>([]);
+  const prevMessagesLenRef = useRef(0);
   const [localRepoId, setLocalRepoId] = useState<string | null>(selectedRepoId);
   const [localConversationId, setLocalConversationId] = useState<string | null>(selectedConversationId);
 
@@ -95,7 +113,13 @@ export const Assistant = ({
 
   useEffect(() => {
     if (selectedRepoId) activeRepoIdRef.current = selectedRepoId;
-    if (selectedConversationId) activeConversationIdRef.current = selectedConversationId;
+    if (selectedConversationId) {
+      if (activeConversationIdRef.current !== selectedConversationId) {
+        // Conversation changed — reset length tracking so cache write fires immediately
+        prevMessagesLenRef.current = 0;
+      }
+      activeConversationIdRef.current = selectedConversationId;
+    }
   }, [selectedConversationId, selectedRepoId]);
 
   useEffect(() => {
@@ -301,6 +325,23 @@ export const Assistant = ({
     }),
     messages: seedMessages,
     onFinish: handleChatFinish,
+  });
+
+  // Keep messagesRef in sync with chat messages so callbacks always read fresh state
+  useEffect(() => {
+    messagesRef.current = chat.messages as UIMessage[];
+  });
+
+  // Write to localStorage cache whenever a new message arrives (streaming or complete).
+  // This is more reliable than onFinish which only fires if SSE completes fully.
+  useEffect(() => {
+    const conversationId = activeConversationIdRef.current;
+    if (!conversationId) return;
+    const msgs = chat.messages as UIMessage[];
+    if (msgs.length > prevMessagesLenRef.current) {
+      setCachedMessages(conversationId, uiMessagesToCache(msgs));
+      prevMessagesLenRef.current = msgs.length;
+    }
   });
 
   const runtime = useAISDKRuntime(chat);
