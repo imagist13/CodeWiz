@@ -1,11 +1,19 @@
 """
-Agent Loop using LangChain
+Agent Loop using LangChain + 多轮对话记忆系统
 """
+import asyncio
 import json
 import uuid
-from typing import List, Dict, Any, AsyncIterator, Tuple
+from typing import List, Dict, Any, AsyncIterator, Tuple, Optional
 from dataclasses import dataclass
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+
+from app.harness.memory import (
+    get_memory_manager,
+    PersistentChatMemory,
+    langchain_msg_to_dict,
+    dict_to_langchain_msg,
+)
 
 
 @dataclass
@@ -64,45 +72,49 @@ def _tool_calls_openai_style(output: Any) -> List[Dict[str, Any]]:
 
 
 class AgentLoop:
-    def __init__(self, system: str = "", max_iterations: int = 10):
+    def __init__(self, system: str = "", max_iterations: int = 10, conversation_id: Optional[str] = None):
         self.system = system
         self.max_iterations = max_iterations
+        self.conversation_id = conversation_id or str(uuid.uuid4())
+        self._memory: PersistentChatMemory = get_memory_manager().get_memory(self.conversation_id)
+        # 如果是新对话且没有 SystemMessage，自动写入
+        if not any(isinstance(m, SystemMessage) for m in self._memory.messages) and system:
+            self._memory.add_message(SystemMessage(content=self.system))
 
-    def _to_langchain_messages(self, messages: List[Dict[str, Any]]) -> List:
-        result = [SystemMessage(content=self.system)]
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = ""
-            parts = msg.get("parts", [])
+    def _import_external_messages(self, messages: List[Dict[str, Any]]) -> None:
+        """把外部传入的历史消息导入持久化记忆（如果当前记忆是空的话）"""
+        if len(self._memory.messages) > 1:  # 除了 SystemMessage 之外还有内容，说明已经有历史了，不用重复导入
+            return
+        for raw_msg in messages:
+            role = raw_msg.get("role", "user")
+            content = raw_msg.get("content", "")
+            parts = raw_msg.get("parts", [])
 
-            msg_content = msg.get("content", "")
-            if isinstance(msg_content, str) and msg_content:
-                content = msg_content
-
+            full_content = content
             for part in parts:
-                if part.get("type") == "text":
-                    content += part.get("text", "")
-                elif part.get("type") == "tool_result":
-                    tool_call = part.get("tool_call") or {}
-                    content += f"\n\n[TOOL RESULT: {tool_call.get('result', '')}]"
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        full_content += part.get("text", "")
 
-            if not content.strip():
+            if not full_content.strip():
                 continue
 
             if role == "user":
-                result.append(HumanMessage(content=content))
+                self._memory.add_message(HumanMessage(content=full_content))
             elif role == "assistant":
-                result.append(AIMessage(content=content))
+                self._memory.add_message(AIMessage(content=full_content))
             elif role == "tool":
-                tc_id = msg.get("tool_call_id", "")
-                result.append(ToolMessage(content=content, tool_call_id=tc_id))
+                self._memory.add_message(
+                    ToolMessage(
+                        content=full_content,
+                        tool_call_id=raw_msg.get("tool_call_id", "")
+                    )
+                )
 
-        return result
-
-    async def run(self, messages: List[Dict[str, Any]]) -> AsyncIterator[StreamEvent]:
-        from app.llm import get_llm
-
+    async def run(self, new_user_message: Optional[str] = None) -> AsyncIterator[StreamEvent]:
+        from app.harness.tools import dispatch_tool_async
         try:
+            from app.llm import get_llm
             llm = get_llm()
         except ValueError as e:
             yield StreamEvent(type="error", content=str(e))
@@ -112,7 +124,11 @@ class AgentLoop:
         if tools:
             llm = llm.bind_tools(tools)
 
-        lc_messages = self._to_langchain_messages(messages)
+        # 如果有新的用户消息，加入记忆
+        if new_user_message and new_user_message.strip():
+            self._memory.add_message(HumanMessage(content=new_user_message))
+
+        lc_messages = self._memory.messages
         iteration = 0
         full_text = ""
 
@@ -137,8 +153,6 @@ class AgentLoop:
                         out = data.get("output")
                         tc_list = _tool_calls_openai_style(out)
                         if tc_list:
-                            from app.harness.tools import dispatch_tool
-
                             parsed: List[Tuple[str, str, str]] = []
                             tool_calls_lc: List[Dict[str, Any]] = []
                             for tc in tc_list:
@@ -162,9 +176,9 @@ class AgentLoop:
                                     }
                                 )
 
-                            lc_messages.append(
-                                AIMessage(content=full_text, tool_calls=tool_calls_lc)
-                            )
+                            ai_msg_with_tools = AIMessage(content=full_text, tool_calls=tool_calls_lc)
+                            self._memory.add_message(ai_msg_with_tools)
+                            lc_messages = self._memory.messages
 
                             for tc_id, name, args_str in parsed:
                                 yield StreamEvent(
@@ -173,13 +187,23 @@ class AgentLoop:
                                     tool_name=name,
                                     tool_args=args_str,
                                 )
-                                result = dispatch_tool(name, tc_id, args_str)
-                                lc_messages.append(
-                                    ToolMessage(
-                                        content=str(result.result),
+                                try:
+                                    result = await dispatch_tool_async(name, tc_id, args_str)
+                                except Exception as e:
+                                    from app.harness.tools import ToolResult
+                                    result = ToolResult(
                                         tool_call_id=tc_id,
+                                        tool_name=name,
+                                        result=f"Tool execution error: {str(e)}",
+                                        is_error=True
                                     )
+                                tool_msg = ToolMessage(
+                                    content=str(result.result),
+                                    tool_call_id=tc_id,
                                 )
+                                self._memory.add_message(tool_msg)
+                                lc_messages = self._memory.messages
+
                                 yield StreamEvent(
                                     type="tool_result",
                                     tool_call_id=tc_id,
@@ -196,6 +220,6 @@ class AgentLoop:
                 continue
             else:
                 if full_text:
-                    lc_messages.append(AIMessage(content=full_text))
+                    self._memory.add_message(AIMessage(content=full_text))
                 yield StreamEvent(type="finish", content=full_text)
                 return

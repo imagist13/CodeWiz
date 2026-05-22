@@ -1,6 +1,4 @@
-"""
-Chat API endpoint — uses LangChain AgentLoop
-"""
+"""Chat API endpoint — uses LangChain AgentLoop"""
 import uuid as uuid_mod
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -51,7 +49,6 @@ def _sse(type_: str, **fields) -> str:
 def _parse_tool_input_json(args_str: str):
     """tool-input-available 需要结构化 input，供 AI SDK 校验。"""
     import json
-
     if not (args_str or "").strip():
         return {}
     try:
@@ -85,10 +82,13 @@ async def chat(
 
     # Build messages dict list from request
     messages_for_agent = []
+    new_user_message: str = ""
     for msg in request.messages:
         msg_dict = {"role": msg.role, "id": msg.id, "parts": []}
+        full_content = ""
         for part in msg.parts:
             if part.type == "text" and part.text:
+                full_content += part.text
                 msg_dict["parts"].append({"type": "text", "text": part.text})
             elif part.type == "tool_result" and part.tool_call:
                 msg_dict["parts"].append({
@@ -97,6 +97,8 @@ async def chat(
                     "content": part.tool_call.get("result", ""),
                     "tool_call": part.tool_call,
                 })
+        if msg.role == "user" and full_content.strip():
+            new_user_message = full_content
         messages_for_agent.append(msg_dict)
 
     from app.harness.agent import AgentLoop
@@ -106,32 +108,30 @@ async def chat(
     repo_id = request.repo_id or request.project_id
     tool_module.set_current_context(repo_id, token)
 
-    agent = AgentLoop(system=SYSTEM_PROMPT)
+    # 用数据库里的 conversation_id（转字符串）作为记忆持久化的唯一 key
+    conversation_id_str = str(request.conversation_id)
+    agent = AgentLoop(system=SYSTEM_PROMPT, conversation_id=conversation_id_str)
+
+    # 把从前端/数据库读出来的历史消息导入持久化记忆（避免每次重启丢失）
+    agent._import_external_messages(messages_for_agent)
 
     async def generate():
-        # 同一轮助手文本必须共用一个 text id：每个 chunk 单独 text-start 会导致前端把每段当成窄列，出现竖排字
         stream_text_id: str | None = None
 
         try:
             # Save user message first
             try:
-                user_content = ""
-                for msg in request.messages:
-                    if msg.role == "user":
-                        for part in msg.parts:
-                            if part.type == "text" and part.text:
-                                user_content += part.text
-                if user_content:
+                if new_user_message:
                     db.add(Message(
                         conversation_id=request.conversation_id,
                         role="user",
-                        content=user_content,
+                        content=new_user_message,
                     ))
                     db.commit()
             except Exception:
-                pass  # Non-critical, continue even if save fails
+                pass
 
-            async for event in agent.run(messages_for_agent):
+            async for event in agent.run(new_user_message):
                 if event.type == "content":
                     if stream_text_id is None:
                         stream_text_id = str(uuid_mod.uuid4())
@@ -142,7 +142,6 @@ async def chat(
                     if stream_text_id:
                         yield _sse("text-end", id=stream_text_id)
                         stream_text_id = None
-                    # 与 Vercel AI SDK / assistant-ui 的 uiMessageChunkSchema 一致（非 id/name）
                     yield _sse(
                         "tool-input-start",
                         toolCallId=event.tool_call_id,

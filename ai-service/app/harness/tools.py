@@ -160,6 +160,20 @@ def dispatch_tool(tool_name: str, tool_call_id: str, arguments) -> ToolResult:
         )
 
 
+async def dispatch_tool_async(tool_name: str, tool_call_id: str, arguments) -> ToolResult:
+    """异步版本的 dispatch_tool，使用 asyncio.to_thread 在线程池中执行阻塞代码，不阻塞 AsyncIO 事件循环"""
+    import asyncio
+    # 先把 context 里的 repo_id/token 捕获下来，传给子线程
+    captured_repo_id = get_current_repo_id()
+    captured_token = get_current_token()
+
+    def _sync_wrapper():
+        set_current_context(captured_repo_id, captured_token)
+        return dispatch_tool(tool_name, tool_call_id, arguments)
+
+    return await asyncio.to_thread(_sync_wrapper)
+
+
 @register_tool(
     name="bashTool",
     description="Execute a shell command in the project directory. Use for running build tools, npm, git, etc.",
@@ -274,17 +288,24 @@ def _ensure_sandbox_running() -> None:
     }
 )
 def search_files_tool(query: str, path: str = ".") -> str:
-    import subprocess
     search_dir = os.path.join(_project_dir(), path) if not os.path.isabs(path) else path
     try:
-        result = subprocess.run(
-            f'grep -rn "{query}" {search_dir}',
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        return result.stdout if result.stdout else "No matches found"
+        results = []
+        for root, _, files in os.walk(search_dir):
+            for fname in files:
+                fpath = os.path.join(root, fname)
+                try:
+                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                        lines = f.readlines()
+                    for i, line in enumerate(lines, 1):
+                        if query in line:
+                            rel = os.path.relpath(fpath, search_dir)
+                            results.append(f"{rel}:{i}: {line.rstrip()}")
+                except Exception:
+                    pass
+        if results:
+            return "\n".join(results)
+        return "No matches found"
     except Exception as e:
         return f"Error searching: {str(e)}"
 
@@ -301,18 +322,28 @@ def search_files_tool(query: str, path: str = ".") -> str:
     }
 )
 def list_files_tool(path: str = ".", recursive: bool = False) -> str:
-    import subprocess
     list_dir = os.path.join(_project_dir(), path) if not os.path.isabs(path) else path
+    lines = []
     try:
-        flag = "-R" if recursive else ""
-        result = subprocess.run(
-            f"ls {flag} -la {list_dir}",
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        return result.stdout
+        if recursive:
+            for root, dirs, files in os.walk(list_dir):
+                rel_root = os.path.relpath(root, list_dir)
+                if rel_root == ".":
+                    rel_root = ""
+                for d in dirs:
+                    p = os.path.join(rel_root, d) if rel_root else d
+                    lines.append(f"{p}/")
+                for f in files:
+                    p = os.path.join(rel_root, f) if rel_root else f
+                    lines.append(f"{p}")
+        else:
+            for entry in os.listdir(list_dir):
+                full_p = os.path.join(list_dir, entry)
+                if os.path.isdir(full_p):
+                    lines.append(f"{entry}/")
+                else:
+                    lines.append(entry)
+        return "\n".join(lines) if lines else "(empty directory)"
     except Exception as e:
         return f"Error listing files: {str(e)}"
 
@@ -358,22 +389,15 @@ def replace_in_file_tool(file: str, old_text: str, new_text: str) -> str:
     }
 )
 def check_app_tool(port: int) -> str:
-    import subprocess
+    import urllib.request
+    import urllib.error
     try:
-        result = subprocess.run(
-            f'curl -s -o /dev/null -w "%{{http_code}}" http://localhost:{port}',
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        code = result.stdout.strip()
-        if code == "200":
-            return f"App is running on port {port}"
-        else:
-            return f"App not responding on port {port} (status: {code})"
+        resp = urllib.request.urlopen(f"http://localhost:{port}", timeout=5)
+        return f"App is running on port {port} (status: {resp.status})"
+    except urllib.error.HTTPError as e:
+        return f"App is running on port {port} (status: {e.code})"
     except Exception as e:
-        return f"Error checking app: {str(e)}"
+        return f"App not responding on port {port} (error: {str(e)})"
 
 
 @register_tool(
