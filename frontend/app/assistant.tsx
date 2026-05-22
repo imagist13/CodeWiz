@@ -18,7 +18,7 @@ import {
 import {
   setCachedMessages,
   type CachedMessage,
-} from "@/lib/message-cache";
+} from "@/lib/idb-message-cache";
 
 const EMPTY_MESSAGES: UIMessage[] = [];
 
@@ -51,7 +51,7 @@ export function convertBackendMessagesToUIMessages(messages: any[]): UIMessage[]
 }
 
 function uiMessagesToCache(messages: UIMessage[]): CachedMessage[] {
-  return messages.map((m) => {
+  const result = messages.map((m): CachedMessage => {
     const textPart = m.parts?.find((p) => p.type === "text");
     return {
       id: m.id,
@@ -59,6 +59,8 @@ function uiMessagesToCache(messages: UIMessage[]): CachedMessage[] {
       content: textPart && "text" in textPart ? textPart.text : "",
     };
   });
+  console.log("[Assistant] uiMessagesToCache:", messages.length, "→", result.length, "cached", JSON.stringify(result).slice(0, 300));
+  return result;
 }
 
 export const Assistant = ({
@@ -279,6 +281,14 @@ export const Assistant = ({
     );
   }, []);
 
+  // Track activeConversationId changes
+  useEffect(() => {
+    if (selectedConversationId) {
+      console.log("[Assistant] selectedConversationId set to:", selectedConversationId);
+      activeConversationIdRef.current = selectedConversationId;
+    }
+  }, [selectedConversationId]);
+
   // ─── Chat setup ────────────────────────────────────────────────────
 
   const runtimeKey = `${chatSessionIdRef.current}:${runtimeVersion}`;
@@ -332,14 +342,26 @@ export const Assistant = ({
     messagesRef.current = chat.messages as UIMessage[];
   });
 
-  // Write to localStorage cache whenever a new message arrives (streaming or complete).
-  // This is more reliable than onFinish which only fires if SSE completes fully.
+  // Reset cache tracking when conversationId changes
+  const lastCachedConvRef = useRef<string | null>(null);
+
+  // Write to IndexedDB cache whenever a new message arrives (streaming or complete).
   useEffect(() => {
     const conversationId = activeConversationIdRef.current;
     if (!conversationId) return;
+
+    // Reset length tracking when switching conversations
+    if (lastCachedConvRef.current !== conversationId) {
+      console.log("[Assistant] New conversation:", conversationId, "— resetting cache tracking");
+      prevMessagesLenRef.current = 0;
+      lastCachedConvRef.current = conversationId;
+    }
+
     const msgs = chat.messages as UIMessage[];
     if (msgs.length > prevMessagesLenRef.current) {
-      setCachedMessages(conversationId, uiMessagesToCache(msgs));
+      console.log("[Assistant] Chat messages grew:", prevMessagesLenRef.current, "→", msgs.length, "for conv", conversationId);
+      const toCache = uiMessagesToCache(msgs);
+      void setCachedMessages(conversationId, toCache);
       prevMessagesLenRef.current = msgs.length;
     }
   });

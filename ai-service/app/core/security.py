@@ -1,9 +1,11 @@
 """
-鉴权：一律走 Go 后端 /auth/me，避免本地 jose 解码与 golang-jwt 签发细节不一致导致 Invalid token。
+鉴权：直接本地解码 JWT，不再回调 Go 后端。
+JWT 格式与 Go backend (golang-jwt/jwt/v5 HS256) 完全一致。
 """
-import httpx
+from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
 
 from app.core.config import get_settings
 
@@ -11,42 +13,40 @@ settings = get_settings()
 security = HTTPBearer()
 
 
-async def validate_token_via_backend(token: str) -> dict:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            resp = await client.get(
-                f"{settings.backend_url.rstrip('/')}/auth/me",
-                headers={"Authorization": f"Bearer {token}"},
-            )
-        except httpx.RequestError:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Backend service unavailable",
-            )
-
-    if resp.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
-
-    body = resp.json()
-    if body.get("code") != 0:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
-
-    data = body.get("data")
-    if not isinstance(data, dict):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
-    return data
-
-
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
-    return await validate_token_via_backend(credentials.credentials)
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=["HS256"],
+        )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+    # Check expiry manually (python-jose handles 'exp' claim automatically, but be explicit)
+    exp = payload.get("exp")
+    if exp:
+        exp_dt = datetime.fromtimestamp(exp, tz=timezone.utc)
+        if exp_dt < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expired",
+            )
+
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing user_id",
+        )
+
+    return {
+        "id": user_id,
+        "email": payload.get("email", ""),
+    }
