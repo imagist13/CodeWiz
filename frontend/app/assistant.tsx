@@ -29,6 +29,22 @@ const extractUserPrompt = (messages: UIMessage[]): string | null => {
   return clean || null;
 };
 
+function convertBackendMessagesToUIMessages(messages: any[]): UIMessage[] {
+  if (!Array.isArray(messages)) return [];
+  return messages.map((m): UIMessage => {
+    return {
+      id: m.id ?? crypto.randomUUID(),
+      role: (m.role as any) === "assistant" ? "assistant" : "user",
+      parts: [
+        {
+          type: "text",
+          text: (m.content as string) ?? "",
+        },
+      ],
+    };
+  });
+}
+
 export const Assistant = ({
   initialMessages,
   selectedRepoId = null,
@@ -48,10 +64,9 @@ export const Assistant = ({
 
   const [seedMessages, setSeedMessages] = useState<UIMessage[]>(resolvedInitialMessages);
   const [runtimeVersion, setRuntimeVersion] = useState(0);
+  const lastMessagesLengthRef = useRef(0);
   const [localRepoId, setLocalRepoId] = useState<string | null>(selectedRepoId);
-  const [localConversationId, setLocalConversationId] = useState<string | null>(
-    selectedConversationId,
-  );
+  const [localConversationId, setLocalConversationId] = useState<string | null>(selectedConversationId);
 
   const activeRepoIdRef = useRef<string | null>(selectedRepoId);
   const activeConversationIdRef = useRef<string | null>(selectedConversationId);
@@ -65,7 +80,12 @@ export const Assistant = ({
   );
 
   useEffect(() => {
-    setSeedMessages(resolvedInitialMessages);
+    const converted = convertBackendMessagesToUIMessages(resolvedInitialMessages);
+    if (converted.length > lastMessagesLengthRef.current || converted.length > 0) {
+      setSeedMessages(converted);
+      lastMessagesLengthRef.current = converted.length;
+      setRuntimeVersion((v) => v + 1);
+    }
   }, [resolvedInitialMessages]);
 
   useEffect(() => {
@@ -86,6 +106,7 @@ export const Assistant = ({
 
   useGoHome(() => {
     setSeedMessages(EMPTY_MESSAGES);
+    lastMessagesLengthRef.current = 0;
     setLocalRepoId(null);
     setLocalConversationId(null);
     activeRepoIdRef.current = null;
@@ -96,6 +117,7 @@ export const Assistant = ({
 
   useGoToRepo((repoId) => {
     setSeedMessages(EMPTY_MESSAGES);
+    lastMessagesLengthRef.current = 0;
     setLocalRepoId(repoId);
     setLocalConversationId(null);
     activeRepoIdRef.current = repoId;
@@ -108,6 +130,7 @@ export const Assistant = ({
     const nextPath = `/${repoId}/${conversationId}`;
     window.history.replaceState(window.history.state, "", nextPath);
     setSeedMessages(EMPTY_MESSAGES);
+    lastMessagesLengthRef.current = 0;
     setLocalRepoId(repoId);
     setLocalConversationId(conversationId);
     activeRepoIdRef.current = repoId;
