@@ -25,6 +25,10 @@ class ResolveError(Exception):
     pass
 
 
+# FIXME(sprint-2): 新 Pattern 加新 action 时需要在此表加一行映射。
+# 触发返工: 写新 Pattern (如 add_websocket_handler) 跑 step_executor 抛 ResolveError。
+# 改法: 在下面字典加 ("action_name", (strategy, dsl_key)) 一行即可, 不改 resolver
+# 主体逻辑。
 _ACTION_TO_KIND = {
     # model 类
     "edit_sequelize_model": ("models", "model"),

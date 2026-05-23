@@ -82,6 +82,12 @@ def _scan_models(repo: Path) -> Dict[str, SymbolRef]:
     return out
 
 
+# FIXME(sprint-2): regex 只覆盖 router.get('/x') 单行写法, hooks 完全没扫。
+# 触发返工: 真 Conduit 用 router.route('/x').get().post() 链式 / forwardRef/memo
+# 包裹的组件 / 自定义 hooks。
+# 改法: _scan_routes 用 tree-sitter query 替代 regex; _scan_components 加 forwardRef
+# 节点识别; 新增 _scan_hooks(repo) 函数填入 CodeMap.hooks 字典。对外 .find/.list
+# 接口完全不动。
 _ROUTE_RE = re.compile(
     r'router\.(get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)["\']'
 )

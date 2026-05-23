@@ -12,6 +12,9 @@ from typing import List, Dict
 from app.harness.codemap_resolver import ResolvedStep
 
 
+# FIXME(sprint-2): 9 套模板都在 _TEMPLATES 字典里, 用真豆包跑通后调优。
+# 触发返工: LLM 多次输出非 unified diff / 漏掉 +++ b/path 头部 / 改错文件。
+# 改法: 把出错的那一套加 "示例 diff" 段, 或者细化约束句, 不改 PromptBuilder 接口。
 _GENERIC_SYSTEM = (
     "你是 JavaScript/Node.js 代码编辑助手。\n"
     "给定文件当前内容与改动需求, 仅输出一个 unified diff (`@@` 格式)。\n"

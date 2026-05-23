@@ -29,6 +29,10 @@ class SkillRouter:
         self._registry = registry
 
     def route(self, intent: str) -> RouterResult:
+        # FIXME(sprint-2): MVP 用 Skill.match() 内的关键词命中。
+        # 触发返工: PM 输入"我想统计每篇文章被看了多少次"没命中 add_view_count。
+        # 改法: 这里加一层 LLM 同义判断, 在关键词分数 < 0.5 时调豆包让它在
+        #       business_names() 里选一个, 接口签名不变 (仍返 RouterResult)。
         scored = [
             RouterCandidate(skill_name=s.name, confidence=s.match(intent))
             for s in self._registry.all_business()
