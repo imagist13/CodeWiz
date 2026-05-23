@@ -65,7 +65,9 @@ func SetupRouter(
 		api.GET("/repos/:repoId/conversations/:conversationId", convHandler.Get)
 		api.DELETE("/repos/:repoId/conversations/:conversationId", convHandler.Delete)
 
+		// Messages: :id for legacy path, :conversationId for AI service proxy
 		api.GET("/conversations/:id/messages", msgHandler.List)
+		api.POST("/repos/:repoId/conversations/:conversationId/messages", msgHandler.Create)
 	}
 
 	return r
