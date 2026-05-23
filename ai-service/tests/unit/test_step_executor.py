@@ -138,3 +138,45 @@ class TestStepExecutor:
         result = await exe.execute(bad_step)
         assert result.status == "failed"
         assert len(llm.calls) == 0  # 失败在 resolver, 没花 LLM
+
+    async def test_new_file_step_uses_diff_header_path(
+        self, tmp_path, codemap, session_factory
+    ):
+        import shutil
+
+        sandbox = tmp_path / "conduit"
+        shutil.copytree(str(FIXTURE), str(sandbox))
+        cm = scan_conduit(str(sandbox))
+
+        # gen_migration is a new-file step; diff header decides filename
+        new_file_diff = (
+            "--- /dev/null\n"
+            "+++ b/backend/db/migrations/2026-add-viewcount.js\n"
+            "@@ -0,0 +1,2 @@\n"
+            "+exports.up = async () => {};\n"
+            "+exports.down = async () => {};\n"
+        )
+        llm = FakeLLM(canned=[new_file_diff])
+        rec = LLMRecorder(
+            session_factory=session_factory, session_id="s1", model="ep-X"
+        )
+        exe = StepExecutor(codemap=cm, llm=rec.wrap(llm), sandbox_root=str(sandbox))
+        step = Step(
+            step_id="s1",
+            layer="backend",
+            action="gen_migration",
+            dsl={
+                "model": "Article",
+                "field_name": "viewCount",
+                "field_type": "int",
+                "default": 0,
+            },
+            prompt_template="add_field_migration",
+        )
+        result = await exe.execute(step)
+        assert result.status == "succeeded"
+        target = sandbox / "backend/db/migrations/2026-add-viewcount.js"
+        assert target.exists()
+        assert "exports.up" in target.read_text()
+        # result.target_path should be the actual file, not the dir
+        assert result.target_path == "backend/db/migrations/2026-add-viewcount.js"

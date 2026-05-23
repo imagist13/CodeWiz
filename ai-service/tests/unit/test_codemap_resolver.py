@@ -113,3 +113,38 @@ class TestCodeMapResolver:
         )
         with pytest.raises(ResolveError):
             r.resolve(step)
+
+    def test_gen_migration_marks_new_file(self, codemap):
+        r = CodeMapResolver(codemap)
+        step = Step(
+            step_id="s1",
+            layer="backend",
+            action="gen_migration",
+            dsl={
+                "model": "Article",
+                "field_name": "viewCount",
+                "field_type": "int",
+                "default": 0,
+            },
+            prompt_template="add_field_migration",
+        )
+        resolved = r.resolve(step)
+        assert resolved.is_new_file is True
+        assert "migrations" in resolved.target_path
+
+    def test_edit_existing_model_is_not_new_file(self, codemap):
+        r = CodeMapResolver(codemap)
+        step = Step(
+            step_id="s1",
+            layer="backend",
+            action="edit_sequelize_model",
+            dsl={
+                "model": "Article",
+                "field_name": "viewCount",
+                "field_type": "int",
+                "default": 0,
+            },
+            prompt_template="add_field_model",
+        )
+        resolved = r.resolve(step)
+        assert resolved.is_new_file is False

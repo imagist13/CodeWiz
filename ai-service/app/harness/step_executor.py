@@ -6,6 +6,7 @@
   - LLMClient 抛异常: 由 LLMRecorder 已记账, 重试逻辑暂留未来 (spec L4)
 """
 
+import re
 from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
@@ -20,6 +21,17 @@ from app.harness.diff_apply import (
     DiffParseError,
     DiffApplyError,
 )
+
+
+_DIFF_NEW_PATH_RE = re.compile(r"^\+\+\+ b/(.+)$", re.MULTILINE)
+
+
+def _extract_target_path_from_diff(diff: str) -> Optional[str]:
+    """从 unified diff 头部解析 +++ b/<path>, 返回相对路径或 None"""
+    m = _DIFF_NEW_PATH_RE.search(diff)
+    if m:
+        return m.group(1).strip()
+    return None
 
 
 class StepExecutionResult(BaseModel):
@@ -91,14 +103,25 @@ class StepExecutor:
                 last_err = f"{type(e).__name__}: {e}"
                 continue
 
-            # 6. 落地
+            # 6. 新文件 step: 从 diff 头解析真实文件名
+            parsed_path: Optional[str] = None
+            if resolved.is_new_file:
+                parsed_path = _extract_target_path_from_diff(diff_text)
+                if parsed_path is None:
+                    last_err = "new file step but diff has no +++ b/<path> header"
+                    continue
+                target_file = self._sandbox / parsed_path
+
+            # 7. 落地
             target_file.parent.mkdir(parents=True, exist_ok=True)
             target_file.write_text(new_content)
 
             return StepExecutionResult(
                 step_id=step.step_id,
                 status="succeeded",
-                target_path=resolved.target_path,
+                target_path=parsed_path
+                if resolved.is_new_file
+                else resolved.target_path,
                 diff=diff_text,
                 retries=attempt,
             )

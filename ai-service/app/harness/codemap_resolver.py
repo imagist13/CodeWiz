@@ -62,6 +62,7 @@ class ResolvedStep(BaseModel):
     prompt_template: str
     target_path: str
     target_lines: Optional[tuple] = None
+    is_new_file: bool = False  # True: target_path is parent dir, exact filename comes from LLM diff header
 
 
 class CodeMapResolver:
@@ -75,6 +76,7 @@ class CodeMapResolver:
 
         target_path: str
         target_lines: Optional[tuple] = None
+        is_new_file: bool = False
 
         if strategy == "models":
             model = step.dsl.get(dsl_key)
@@ -121,9 +123,11 @@ class CodeMapResolver:
             if target_path == self._cm.migrations_dir:
                 # codemap.repo_root 是绝对路径, 取 basename 路径
                 target_path = "backend/db/migrations"
+            is_new_file = True
 
         elif strategy == "new_in_tests":
             target_path = "tests"
+            is_new_file = True
 
         elif strategy == "frontend_path":
             target_path = dsl_key  # 这里 dsl_key 直接是路径常量
@@ -139,4 +143,5 @@ class CodeMapResolver:
             prompt_template=step.prompt_template,
             target_path=target_path,
             target_lines=target_lines,
+            is_new_file=is_new_file,
         )
