@@ -33,6 +33,8 @@ class TestScanConduit:
         comps = cm.list("components")
         assert "ArticlePreview" in comps
         assert "Editor" in comps
+        assert "ArticleDetail" in comps  # 给 add_word_count / add_edited_time
+        assert "CommentCard" in comps  # 给 add_comment_like
 
     def test_migrations_dir_resolved(self):
         cm = scan_conduit(str(FIXTURE))
