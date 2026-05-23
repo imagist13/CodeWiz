@@ -22,6 +22,7 @@ class LLMClient(Protocol):
         messages: List[Dict[str, str]],
         temperature: float = 0.0,
         max_tokens: int = 2048,
+        **metadata: Any,  # skill_name / prompt_key / step_id 等 observability 元数据
     ) -> LLMResponse: ...
 
 
@@ -38,12 +39,14 @@ class FakeLLM:
         messages: List[Dict[str, str]],
         temperature: float = 0.0,
         max_tokens: int = 2048,
+        **metadata: Any,
     ) -> LLMResponse:
         self.calls.append(
             {
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
+                **metadata,
             }
         )
         content = self._canned[self._cursor]  # 用完会抛 IndexError
