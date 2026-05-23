@@ -12,9 +12,12 @@ pydantic-settings>=2.10.1
 python-dotenv>=1.0.0
 sse-starlette>=2.0.0
 websockets>=12.0
+# langchain 0.3.x 系列 (0.3.27 与新版 openai/community 冲突, 提下限至 0.3.78)
 langchain-core>=0.3.78,<0.4.0
 langchain-openai>=0.3.35,<0.4.0
 langchain-community>=0.3.30,<0.4.0
+tiktoken>=0.7.0
+# 测试 + orchestrator + StepExecutor 依赖
 pytest>=7.4
 pytest-asyncio>=0.21
 pytest-cov>=4.1

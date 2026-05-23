@@ -17,8 +17,12 @@ import time
 import signal
 import json
 import sys
+import shlex
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # 全局配置
@@ -67,6 +71,40 @@ def _get_preview_host() -> str:
     return "localhost"
 
 
+def _safe_kill_process_tree(proc: subprocess.Popen) -> None:
+    """安全终止整个进程树，跨平台兼容"""
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True,
+                timeout=10
+            )
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+    else:
+        try:
+            import os
+            import signal
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except Exception:
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+
+
 @dataclass
 class DevServer:
     """单个项目的 dev server + 静态预览服务器"""
@@ -74,6 +112,8 @@ class DevServer:
     port: int
     dev_process: Optional[subprocess.Popen] = None
     static_process: Optional[subprocess.Popen] = None
+    dev_log_file: Optional[str] = None
+    static_log_file: Optional[str] = None
     started_at: float = field(default_factory=time.time)
 
     @property
@@ -132,7 +172,13 @@ class SandboxManager:
         """确保项目目录存在，返回路径"""
         d = self.get_project_dir(project_id)
         os.makedirs(d, exist_ok=True)
+        # 创建 logs 子目录
+        logs_dir = os.path.join(d, ".codewiz-logs")
+        os.makedirs(logs_dir, exist_ok=True)
         return d
+
+    def _get_log_path(self, project_id: str, log_name: str) -> str:
+        return os.path.join(self.ensure_project_dir(project_id), ".codewiz-logs", f"{log_name}.log")
 
     def get_sandbox(self, project_id: str) -> Optional[DevServer]:
         with self._lock:
@@ -175,8 +221,8 @@ class SandboxManager:
                     cmd = scripts.get(key)
                     if cmd:
                         return cmd, project_dir
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to parse package.json: {e}")
 
         # Python Flask/FastAPI
         requirements = os.path.join(project_dir, "requirements.txt")
@@ -186,11 +232,12 @@ class SandboxManager:
         # 纯 HTML/静态文件
         return None, project_dir
 
-    def _start_static_server(self, port: int, directory: str) -> subprocess.Popen:
+    def _start_static_server(self, port: int, directory: str, log_file: str) -> subprocess.Popen:
         """
         启动 HTTP 静态文件服务器。
         绑定 0.0.0.0 让宿主机浏览器可以访问。
         """
+        log_fd = open(log_file, "a", encoding="utf-8", buffering=1)
         cmd = [
             _get_python_cmd(), "-m", "http.server",
             str(port),
@@ -199,10 +246,37 @@ class SandboxManager:
         ]
         proc = subprocess.Popen(
             cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=log_fd,
+            stderr=subprocess.STDOUT,
             cwd=directory,
+            shell=False,
         )
+        return proc
+
+    def _start_dev_command(self, dev_command: str, project_dir: str, log_file: str) -> Optional[subprocess.Popen]:
+        """
+        安全地启动 dev 命令，不使用 shell=True，避免命令注入风险。
+        """
+        try:
+            # 使用 shlex.split 安全拆分命令
+            args = shlex.split(dev_command, posix=(sys.platform != "win32"))
+        except ValueError as e:
+            logger.error(f"Failed to parse dev command: {e}")
+            return None
+
+        log_fd = open(log_file, "a", encoding="utf-8", buffering=1)
+
+        kwargs = {
+            "args": args,
+            "stdout": log_fd,
+            "stderr": subprocess.STDOUT,
+            "cwd": project_dir,
+            "shell": False,
+        }
+        if sys.platform != "win32":
+            kwargs["preexec_fn"] = os.setsid
+
+        proc = subprocess.Popen(**kwargs)
         return proc
 
     def start_dev_server(self, project_id: str) -> dict:
@@ -229,25 +303,25 @@ class SandboxManager:
 
         dev_command, static_root = self._detect_dev_command(project_dir)
 
+        # 准备日志文件路径
+        static_log = self._get_log_path(project_id, "static-server")
+        dev_log = self._get_log_path(project_id, "dev-server")
+
         # 始终启动静态预览服务器（兜底，用于纯 HTML / 构建产物）
-        static_proc = self._start_static_server(sandbox.port, static_root)
+        static_proc = self._start_static_server(sandbox.port, static_root, static_log)
+        logger.info(f"Static server for project {project_id} started, PID={static_proc.pid}, log={static_log}")
 
         dev_proc: Optional[subprocess.Popen] = None
-
         if dev_command:
-            # 有 package.json dev 脚本，启动 dev server
-            dev_proc = subprocess.Popen(
-                dev_command,
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                cwd=project_dir,
-                preexec_fn=os.setsid if hasattr(os, "setsid") else None,
-            )
+            dev_proc = self._start_dev_command(dev_command, project_dir, dev_log)
+            if dev_proc:
+                logger.info(f"Dev server for project {project_id} started, PID={dev_proc.pid}, log={dev_log}")
 
         with self._lock:
             sandbox.dev_process = dev_proc
             sandbox.static_process = static_proc
+            sandbox.dev_log_file = dev_log
+            sandbox.static_log_file = static_log
 
         # 等待一小会让服务器启动
         time.sleep(2)
@@ -261,26 +335,21 @@ class SandboxManager:
         }
 
     def stop_dev_server(self, project_id: str) -> dict:
-        """停止项目的 dev server"""
+        """停止项目的 dev server，跨平台安全终止整个进程树"""
         with self._lock:
             sandbox = self._sandboxes.pop(project_id, None)
 
         if not sandbox:
             return {"success": True, "message": "No sandbox found"}
 
-        for proc in (sandbox.dev_process, sandbox.static_process):
+        for proc_name, proc in [("dev", sandbox.dev_process), ("static", sandbox.static_process)]:
             if proc:
                 try:
-                    if hasattr(os, "killpg"):
-                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-                    else:
-                        proc.terminate()
-                    proc.wait(timeout=5)
-                except Exception:
-                    try:
-                        proc.kill()
-                    except Exception:
-                        pass
+                    logger.info(f"Stopping {proc_name} server PID={proc.pid} for project {project_id}")
+                    _safe_kill_process_tree(proc)
+                    logger.info(f"Successfully stopped {proc_name} server PID={proc.pid}")
+                except Exception as e:
+                    logger.warning(f"Error stopping {proc_name} server: {e}")
 
         return {"success": True, "message": "Dev server stopped"}
 
@@ -302,6 +371,8 @@ class SandboxManager:
             "port": sandbox.port,
             "preview_url": sandbox.preview_url,
             "is_running": sandbox.is_running,
+            "dev_log_file": sandbox.dev_log_file,
+            "static_log_file": sandbox.static_log_file,
         }
 
 
