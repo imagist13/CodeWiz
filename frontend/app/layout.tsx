@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { WorkspaceFrame } from "./workspace-frame";
+import "./super-agent.css";
 import { AuthProvider } from "@/lib/auth-context";
+import SuperAgentLayout from "@/components/super-agent/Layout";
 
 export const metadata: Metadata = {
-  title: "CodeWiz",
-  description: "Build beautiful apps with AI",
+  title: "Super Agent - CodeWiz",
+  description: "Super Agent - AI Powered Development Platform",
 };
 
 export default function RootLayout({
@@ -14,13 +15,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark h-full overflow-hidden">
-      <body
-        className="h-full overflow-hidden overscroll-none antialiased"
-        suppressHydrationWarning
-      >
+    <html lang="zh-CN">
+      <body suppressHydrationWarning>
         <AuthProvider>
-          <WorkspaceFrame>{children}</WorkspaceFrame>
+          <SuperAgentLayout>{children}</SuperAgentLayout>
         </AuthProvider>
       </body>
     </html>
