@@ -11,17 +11,25 @@ def _mock_transport(handler):
 
 
 def _ok_response(
-    content: str = "hi", prompt_tokens: int = 5, completion_tokens: int = 3
+    content: str = "hi",
+    prompt_tokens: int = 5,
+    completion_tokens: int = 3,
+    reasoning_content: str = "",
+    reasoning_tokens: int = 0,
 ):
     def handler(request):
+        message = {"role": "assistant", "content": content}
+        if reasoning_content:
+            message["reasoning_content"] = reasoning_content
         return httpx.Response(
             200,
             json={
-                "choices": [{"message": {"role": "assistant", "content": content}}],
+                "choices": [{"message": message}],
                 "usage": {
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
                     "total_tokens": prompt_tokens + completion_tokens,
+                    "completion_tokens_details": {"reasoning_tokens": reasoning_tokens},
                 },
             },
         )
@@ -119,3 +127,46 @@ class TestArkClient:
         )
         r = await client.chat([{"role": "user", "content": "hi"}])
         assert r.cost_cny == pytest.approx(1000 / 1000 * 0.0008 + 1000 / 1000 * 0.002)
+
+    async def test_parses_reasoning_content_and_tokens(self):
+        client = ArkClient(
+            api_key="x",
+            endpoint_id="ep",
+            transport=_mock_transport(
+                _ok_response(
+                    content="最终答案",
+                    prompt_tokens=10,
+                    completion_tokens=200,
+                    reasoning_content="先分析需求...再决定方案...",
+                    reasoning_tokens=180,
+                )
+            ),
+        )
+        r = await client.chat([{"role": "user", "content": "hi"}])
+        assert r.content == "最终答案"
+        assert r.reasoning_content == "先分析需求...再决定方案..."
+        assert r.reasoning_tokens == 180
+        assert r.tokens_out == 200
+
+    async def test_reasoning_defaults_empty_when_absent(self):
+        client = ArkClient(
+            api_key="x",
+            endpoint_id="ep",
+            transport=_mock_transport(_ok_response("only content")),
+        )
+        r = await client.chat([{"role": "user", "content": "hi"}])
+        assert r.reasoning_content == ""
+        assert r.reasoning_tokens == 0
+
+    async def test_default_max_tokens_is_4096(self):
+        captured = {}
+
+        def handler(request):
+            captured["body"] = json.loads(request.content)
+            return _ok_response()(request)
+
+        client = ArkClient(
+            api_key="x", endpoint_id="ep", transport=_mock_transport(handler)
+        )
+        await client.chat([{"role": "user", "content": "hi"}])
+        assert captured["body"]["max_tokens"] == 4096

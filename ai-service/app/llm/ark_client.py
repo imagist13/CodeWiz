@@ -40,7 +40,7 @@ class ArkClient:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.0,
-        max_tokens: int = 2048,
+        max_tokens: int = 4096,
         **metadata: Any,
     ) -> LLMResponse:
         body = {
@@ -61,14 +61,20 @@ class ArkClient:
             resp.raise_for_status()
         elapsed_ms = int((time.monotonic() - started) * 1000)
         data = resp.json()
+        message = data["choices"][0]["message"]
         usage = data.get("usage", {})
         tokens_in = int(usage.get("prompt_tokens", 0))
         tokens_out = int(usage.get("completion_tokens", 0))
+        reasoning_tokens = int(
+            usage.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+        )
         return LLMResponse(
-            content=data["choices"][0]["message"]["content"],
+            content=message.get("content", "") or "",
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             latency_ms=elapsed_ms,
             cost_cny=tokens_in / 1000 * INPUT_PRICE_PER_1K
             + tokens_out / 1000 * OUTPUT_PRICE_PER_1K,
+            reasoning_content=message.get("reasoning_content", "") or "",
+            reasoning_tokens=reasoning_tokens,
         )
