@@ -7,6 +7,7 @@
                                          上下文不匹配抛 DiffApplyError
 """
 
+import re
 from typing import List
 from unidiff import PatchSet
 from unidiff.errors import UnidiffParseError
@@ -20,11 +21,69 @@ class DiffApplyError(Exception):
     pass
 
 
+_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+
+
+def normalize_hunk_headers(diff: str) -> str:
+    """重算每个 hunk header 的 Y/Z。
+
+    LLM (尤其推理模型) 经常算错 `@@ -X,Y +X,Z @@` 中的 Y/Z, 而 unidiff 严格校验。
+    起始行号 X 一般写得对, body 也对; 这里扫 body 实际的 ` `/`+`/`-` 行数,
+    覆盖 header 里声明的长度。LLM 没写 Y/Z 时也会自动补齐。
+    """
+    lines = diff.splitlines(keepends=True)
+    out: List[str] = []
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
+        stripped = raw.rstrip("\r\n")
+        m = _HUNK_RE.match(stripped)
+        if not m:
+            out.append(raw)
+            i += 1
+            continue
+        # 扫 body 直到下一个 @@ / 文件头 / 文件末尾
+        j = i + 1
+        src_len = 0
+        tgt_len = 0
+        while j < len(lines):
+            body = lines[j]
+            head = body.rstrip("\r\n")
+            if (
+                head.startswith("@@")
+                or head.startswith("--- ")
+                or head.startswith("+++ ")
+            ):
+                break
+            if body.startswith("\\"):
+                pass
+            elif body.startswith("+"):
+                tgt_len += 1
+            elif body.startswith("-"):
+                src_len += 1
+            else:
+                src_len += 1
+                tgt_len += 1
+            j += 1
+        src_start = m.group(1)
+        tgt_start = m.group(2)
+        trailing = stripped[m.end() :]
+        line_ending = raw[len(stripped) :]
+        new_header = (
+            f"@@ -{src_start},{src_len} +{tgt_start},{tgt_len} @@"
+            f"{trailing}{line_ending}"
+        )
+        out.append(new_header)
+        out.extend(lines[i + 1 : j])
+        i = j
+    return "".join(out)
+
+
 def parse_diff(diff: str) -> PatchSet:
     if not diff.strip():
         raise DiffParseError("empty diff")
     try:
-        ps = PatchSet(diff)
+        ps = PatchSet(normalize_hunk_headers(diff))
     except UnidiffParseError as e:
         raise DiffParseError(str(e)) from e
     if len(ps) == 0:

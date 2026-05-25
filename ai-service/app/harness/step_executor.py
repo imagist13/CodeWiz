@@ -110,11 +110,20 @@ class StepExecutor:
                 if parsed_path is None:
                     last_err = "new file step but diff has no +++ b/<path> header"
                     continue
-                target_file = self._sandbox / parsed_path
+                # 如果 LLM 写的 path 还是目录 (没补文件名), 不要 write_text
+                candidate = self._sandbox / parsed_path
+                if candidate.exists() and candidate.is_dir():
+                    last_err = f"diff +++ path is a directory: {parsed_path!r}"
+                    continue
+                target_file = candidate
 
-            # 7. 落地
-            target_file.parent.mkdir(parents=True, exist_ok=True)
-            target_file.write_text(new_content)
+            # 7. 落地 (IO 错不应炸 graph; 转 last_err 重试)
+            try:
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+                target_file.write_text(new_content)
+            except OSError as e:
+                last_err = f"write failed: {type(e).__name__}: {e}"
+                continue
 
             return StepExecutionResult(
                 step_id=step.step_id,
