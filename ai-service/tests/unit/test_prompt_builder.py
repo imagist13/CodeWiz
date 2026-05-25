@@ -83,3 +83,27 @@ class TestPromptBuilder:
         # 未注册的模板不应崩, 应走通用 system prompt
         msgs = b.build(_step(prompt_template="never_seen"), source=SAMPLE_SRC)
         assert "diff" in msgs[0]["content"].lower()
+
+    def test_user_message_has_line_numbers(self):
+        b = PromptBuilder()
+        msgs = b.build(_step(), source=SAMPLE_SRC)
+        body = msgs[1]["content"]
+        # SAMPLE_SRC 第 1 行是 `const { Model } = require("sequelize");`
+        assert " 1: const { Model }" in body
+        # Article.init 在第 6 行
+        assert " 6:   Article.init({" in body
+
+    def test_user_message_explains_line_number_usage(self):
+        b = PromptBuilder()
+        msgs = b.build(_step(), source=SAMPLE_SRC)
+        body = msgs[1]["content"]
+        # 必须告知 LLM 使用真实行号 + 上下文不带前缀
+        assert "真实行号" in body
+        assert "NNN:" in body
+
+    def test_empty_source_does_not_break(self):
+        b = PromptBuilder()
+        # 空源 (新文件 step) 不应抛
+        msgs = b.build(_step(), source="")
+        # 也不应出现 " 1: " 行号前缀
+        assert " 1: " not in msgs[1]["content"]

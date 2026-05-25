@@ -22,7 +22,9 @@ _GENERIC_SYSTEM = (
     "  - 只输出 diff, 不解释\n"
     "  - 只改 user message 指定的那一个文件\n"
     "  - 保持原代码缩进风格\n"
-    "  - 不要 import 新包"
+    "  - 不要 import 新包\n"
+    "  - 当前文件内容每行前面有 `NNN: ` 行号前缀, 你的 `@@ -X,Y +X,Z @@` 头"
+    "必须用文件中真实的行号 X (即前缀里的 NNN); 上下文行体不要带 `NNN: ` 前缀"
 )
 
 
@@ -69,18 +71,30 @@ _TEMPLATES: Dict[str, str] = {
 }
 
 
+def _with_line_numbers(source: str) -> str:
+    if not source:
+        return ""
+    lines = source.splitlines()
+    width = max(2, len(str(len(lines))))
+    return "\n".join(f"{i:>{width}}: {line}" for i, line in enumerate(lines, 1))
+
+
 class PromptBuilder:
     def build(self, step: ResolvedStep, source: str) -> List[Dict[str, str]]:
         system = _TEMPLATES.get(step.prompt_template, _GENERIC_SYSTEM)
+        numbered_source = _with_line_numbers(source)
         user = (
             f"目标文件: {step.target_path}\n"
             f"action: {step.action}\n"
             f"DSL: {json.dumps(step.dsl, ensure_ascii=False)}\n"
             f"---\n"
-            f"当前文件内容:\n{source}\n"
+            f"当前文件内容 (每行前缀 `NNN: ` 是该行在文件中的真实行号):\n"
+            f"{numbered_source}\n"
             f"---\n"
             f"请输出 unified diff (含 `--- a/{step.target_path}` 与 "
-            f"`+++ b/{step.target_path}` 头部) 仅修改该文件。"
+            f"`+++ b/{step.target_path}` 头部) 仅修改该文件。\n"
+            f"重要: `@@ -X,Y +X,Z @@` 中的 X 必须用上面 `NNN:` 标注的真实行号; "
+            f"diff 体的上下文行不要带 `NNN: ` 前缀。"
         )
         return [
             {"role": "system", "content": system},
