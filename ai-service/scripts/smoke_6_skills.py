@@ -28,10 +28,12 @@ FIXTURE = Path(__file__).parent.parent / "tests" / "fixtures" / "conduit_mini"
 
 SCENARIOS: List[Tuple[str, str, str]] = [
     ("L1.1", "add_view_count", "给文章加阅读量字段, 每次访问文章详情时累加 1"),
-    ("L1.4", "add_comment_like", "评论需要支持点赞功能, 显示点赞数"),
+    ("L1.2", "add_popular_tags_badge", "给侧边栏 popular tags 前 5 个标签加视觉打标"),
+    ("L1.3", "add_about_me_tab", "个人主页加 about me tab 展示 user bio"),
+    ("L1.4", "add_word_count", "文章详情显示字数和预计阅读时间"),
     ("L2.1", "add_cover_image", "文章需要有封面图, 列表和详情都要展示"),
-    ("L2.2", "add_article_draft", "支持文章草稿状态, 未发布的草稿不公开"),
-    ("L2.3", "add_word_count", "文章详情显示字数和预计阅读时间"),
+    ("L2.2", "add_comment_like", "评论需要支持点赞功能, 显示点赞数"),
+    ("L2.3", "add_article_draft", "支持文章草稿状态, 未发布的草稿不公开"),
     ("L2.4", "add_edited_time", "显示文章最后一次编辑时间"),
 ]
 

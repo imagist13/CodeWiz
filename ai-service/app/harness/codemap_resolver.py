@@ -48,6 +48,8 @@ _ACTION_TO_KIND = {
     "inject_form_input_jsx": ("components", "component"),
     "wire_state_setter": ("components", "component"),
     "inject_status_selector": ("components", "component"),
+    "inject_list_badge": ("components", "component"),
+    "add_page_tab": ("components", "page_component"),
     # 新文件类
     "gen_migration": ("new_in_migrations", None),
     "gen_idempotency_table_migration": ("new_in_migrations", None),

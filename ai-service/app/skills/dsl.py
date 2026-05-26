@@ -39,6 +39,21 @@ class ButtonDef(BaseModel):
     idempotent: bool = False
 
 
+class ListBadgeDef(BaseModel):
+    component: str
+    list_binding: str
+    limit: int = Field(ge=1, le=50)
+    badge_label: str = "Top"
+    badge_class: str = "tag-badge"
+
+
+class PageTabDef(BaseModel):
+    page_component: str
+    tab_id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    tab_label: str
+    content_binding: str
+
+
 class Step(BaseModel):
     step_id: str
     layer: _LAYERS

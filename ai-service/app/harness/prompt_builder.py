@@ -68,6 +68,18 @@ _TEMPLATES: Dict[str, str] = {
         "你是 Jest+Sequelize 单测生成助手。生成一个新文件, 测试新字段的默认值 + "
         "migration 增列。仅输出 diff (--- /dev/null +++ <path>)。"
     ),
+    "inject_list_badge": (
+        "你是 React 列表条件渲染助手。给指定组件中遍历 dsl.list_binding 的 "
+        "map/forEach, 给前 dsl.limit 个 item 加一个 <span class='dsl.badge_class'>"
+        "dsl.badge_label</span>。用 index 判断, 不引入排序、不改 list 数据本身。"
+        "仅输出 diff。"
+    ),
+    "add_page_tab": (
+        "你是 React Tab 注入助手。在指定页面组件的现有 Tab 容器里新增一个 tab: "
+        "tab 头 label = dsl.tab_label, 点击切换到 id = dsl.tab_id; tab 面板内容"
+        "渲染 dsl.content_binding 表达式 (如 user.bio)。若组件用条件渲染切 tab,"
+        "在条件分支末尾加一支; 若用 tabs 配置数组, 往数组里 push 一项。仅输出 diff。"
+    ),
 }
 
 
