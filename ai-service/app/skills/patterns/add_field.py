@@ -39,14 +39,20 @@ class AddFieldPattern(PatternSkill):
         return 0.0
 
     def plan(self, dsl: FieldDef) -> List[Step]:
-        payload = dsl.model_dump()
-        return [
-            Step(
-                step_id=str(uuid.uuid4()),
-                layer=layer,
-                action=action,
-                dsl=payload,
-                prompt_template=tpl,
+        base = dsl.model_dump()
+        steps: List[Step] = []
+        for action, layer, tpl in _ACTIONS:
+            step_dsl = dict(base)
+            # 给 components 策略的 step 注入默认 component (codemap_resolver 需要)
+            if action == "inject_form_input":
+                step_dsl["component"] = "Editor"
+            steps.append(
+                Step(
+                    step_id=str(uuid.uuid4()),
+                    layer=layer,
+                    action=action,
+                    dsl=step_dsl,
+                    prompt_template=tpl,
+                )
             )
-            for action, layer, tpl in _ACTIONS
-        ]
+        return steps

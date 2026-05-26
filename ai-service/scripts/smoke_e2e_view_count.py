@@ -81,9 +81,13 @@ def _summarize_state(s: Dict[str, Any]) -> None:
 async def main() -> int:
     api_key = os.environ.get("ARK_API_KEY")
     endpoint = os.environ.get("ARK_ENDPOINT")
+    base_url = os.environ.get(
+        "ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3"
+    )
     if not api_key or not endpoint:
         print("ERROR: set ARK_API_KEY and ARK_ENDPOINT env vars", file=sys.stderr)
         return 2
+    print(f"using base_url={base_url}  model={endpoint}")
 
     sandbox = Path("/tmp/codewiz-smoke/conduit")
     if sandbox.exists():
@@ -92,7 +96,7 @@ async def main() -> int:
     shutil.copytree(str(FIXTURE), str(sandbox))
     print(f"sandbox = {sandbox}")
 
-    ark = ArkClient(api_key=api_key, endpoint_id=endpoint)
+    ark = ArkClient(api_key=api_key, endpoint_id=endpoint, base_url=base_url)
     llm = VerboseLLM(ark)
     cp = make_checkpointer(CheckpointerKind.MEMORY)
     graph = build_graph(sandbox_root=str(sandbox), llm=llm, checkpointer=cp)

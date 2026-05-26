@@ -70,7 +70,12 @@ class StatsLLM:
 
 
 async def run_one(
-    label: str, expected_skill: str, intent: str, api_key: str, endpoint: str
+    label: str,
+    expected_skill: str,
+    intent: str,
+    api_key: str,
+    endpoint: str,
+    base_url: str,
 ) -> Dict[str, Any]:
     sandbox = Path(f"/tmp/codewiz-smoke/{expected_skill}")
     if sandbox.exists():
@@ -78,7 +83,7 @@ async def run_one(
     sandbox.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(str(FIXTURE), str(sandbox))
 
-    ark = ArkClient(api_key=api_key, endpoint_id=endpoint)
+    ark = ArkClient(api_key=api_key, endpoint_id=endpoint, base_url=base_url)
     stats = StatsLLM(ark)
     cp = make_checkpointer(CheckpointerKind.MEMORY)
     graph = build_graph(sandbox_root=str(sandbox), llm=stats, checkpointer=cp)
@@ -173,14 +178,18 @@ def print_report(rows: List[Dict[str, Any]]) -> None:
 async def main() -> int:
     api_key = os.environ.get("ARK_API_KEY")
     endpoint = os.environ.get("ARK_ENDPOINT")
+    base_url = os.environ.get(
+        "ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3"
+    )
     if not api_key or not endpoint:
         print("ERROR: set ARK_API_KEY and ARK_ENDPOINT env vars", file=sys.stderr)
         return 2
+    print(f"using base_url={base_url}  model={endpoint}")
 
     rows = []
     for label, skill, intent in SCENARIOS:
         print(f"\n>>> running {label} ({skill}) ...")
-        r = await run_one(label, skill, intent, api_key, endpoint)
+        r = await run_one(label, skill, intent, api_key, endpoint, base_url)
         rows.append(r)
         s = r["stats"]
         print(

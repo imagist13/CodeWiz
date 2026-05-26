@@ -110,11 +110,12 @@ class StepExecutor:
                 if parsed_path is None:
                     last_err = "new file step but diff has no +++ b/<path> header"
                     continue
-                # 如果 LLM 写的 path 还是目录 (没补文件名), 不要 write_text
                 candidate = self._sandbox / parsed_path
+                # LLM 偷懒只给目录路径 (DeepSeek 系常见): 自动补文件名让 step 继续
                 if candidate.exists() and candidate.is_dir():
-                    last_err = f"diff +++ path is a directory: {parsed_path!r}"
-                    continue
+                    auto_name = f"{step.action}-{step.step_id[:8]}.js"
+                    candidate = candidate / auto_name
+                    parsed_path = f"{parsed_path.rstrip('/')}/{auto_name}"
                 target_file = candidate
 
             # 7. 落地 (IO 错不应炸 graph; 转 last_err 重试)

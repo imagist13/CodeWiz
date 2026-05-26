@@ -3,6 +3,7 @@ from app.harness.diff_apply import (
     parse_diff,
     apply_diff,
     normalize_hunk_headers,
+    strip_markdown_fence,
     DiffParseError,
     DiffApplyError,
 )
@@ -166,3 +167,27 @@ class TestNormalizeHunkHeaders:
         normalized = normalize_hunk_headers(_DIFF_HEADER_TOO_LARGE)
         new = apply_diff(normalized, "line1\nline2\n")
         assert new == "line1\ninserted\nline2\n"
+
+
+class TestStripMarkdownFence:
+    def test_strips_diff_fence(self):
+        s = "```diff\n--- a/foo.js\n+++ b/foo.js\n@@ -1 +1 @@\n+x\n```"
+        out = strip_markdown_fence(s)
+        assert out.startswith("--- a/foo.js")
+        assert "```" not in out
+
+    def test_strips_unlabeled_fence(self):
+        s = "```\n--- a/foo.js\n+++ b/foo.js\n@@ -1 +1 @@\n+x\n```"
+        out = strip_markdown_fence(s)
+        assert out.startswith("--- a/foo.js")
+
+    def test_no_fence_unchanged(self):
+        s = "--- a/foo.js\n+++ b/foo.js\n@@ -1 +1 @@\n+x\n"
+        assert strip_markdown_fence(s) == s
+
+    def test_parse_after_strip(self):
+        # 真实 DeepSeek 失败 case: 整个 diff 包在 ```diff ... ``` 围栏里
+        wrapped = "```diff\n--- a/foo.js\n+++ b/foo.js\n@@ -1,2 +1,3 @@\n line1\n+inserted\n line2\n```\n"
+        ps = parse_diff(wrapped)
+        assert len(ps) == 1
+        assert ps[0].path == "foo.js"

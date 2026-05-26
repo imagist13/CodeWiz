@@ -49,14 +49,19 @@ class AddEnumStatusPattern(PatternSkill):
         return 0.0
 
     def plan(self, dsl: EnumStatusDef) -> List[Step]:
-        payload = dsl.model_dump()
-        return [
-            Step(
-                step_id=str(uuid.uuid4()),
-                layer=layer,
-                action=action,
-                dsl=payload,
-                prompt_template=tpl,
+        base = dsl.model_dump()
+        steps: List[Step] = []
+        for action, layer, tpl in _ACTIONS:
+            step_dsl = dict(base)
+            if action == "inject_status_selector":
+                step_dsl["component"] = "Editor"
+            steps.append(
+                Step(
+                    step_id=str(uuid.uuid4()),
+                    layer=layer,
+                    action=action,
+                    dsl=step_dsl,
+                    prompt_template=tpl,
+                )
             )
-            for action, layer, tpl in _ACTIONS
-        ]
+        return steps

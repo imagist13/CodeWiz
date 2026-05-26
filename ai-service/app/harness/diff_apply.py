@@ -79,11 +79,25 @@ def normalize_hunk_headers(diff: str) -> str:
     return "".join(out)
 
 
+def strip_markdown_fence(diff: str) -> str:
+    """剥除 LLM 输出里的 ``` 围栏 (DeepSeek 系常见行为)。
+
+    unified diff body 不会以 ``` 开头, 所以删任意位置 ``` 开头的整行都安全。
+    覆盖 (a) 整体首尾包裹 (b) 多段 diff 各自带围栏 两种 LLM 模式。
+    """
+    lines = diff.splitlines()
+    kept = [ln for ln in lines if not ln.lstrip().startswith("```")]
+    out = "\n".join(kept)
+    if diff.endswith("\n") and not out.endswith("\n"):
+        out += "\n"
+    return out
+
+
 def parse_diff(diff: str) -> PatchSet:
     if not diff.strip():
         raise DiffParseError("empty diff")
     try:
-        ps = PatchSet(normalize_hunk_headers(diff))
+        ps = PatchSet(normalize_hunk_headers(strip_markdown_fence(diff)))
     except UnidiffParseError as e:
         raise DiffParseError(str(e)) from e
     if len(ps) == 0:
