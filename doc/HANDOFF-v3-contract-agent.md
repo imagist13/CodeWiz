@@ -1,6 +1,7 @@
 # 交接文档：v3 Contract + ExploreEditAgent
 
-> 分支：`feat/contract-agent` · 6 commits · 338 tests passing + 2 skipped (real-LLM gated)
+> 分支：`feat/contract-agent` · 7 commits · 338 tests passing + 2 skipped (real-LLM gated)
+> **Review PR：https://github.com/YIKUAIBANZI/CodeWiz/pull/1**（base `feat/agents-skills`，正常 PR，待 review 对齐 Q1 后再合并）
 > 范围：在 `feat/agents-skills` (PR #6) 基础上加 editing 模式 — 让 PM 在 Conduit 实仓上做最小变更并出真 PR
 > 关系：**不替换**旧 Skill plan() 路径，双路径并存；旧 7 Skill 不动，先用 `add_view_count` 验证新架构
 
