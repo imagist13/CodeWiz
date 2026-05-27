@@ -91,7 +91,11 @@ class TestNodePlanBuilder:
 
 
 class TestNodePrCreator:
-    async def test_mocked_pr_url_returned(self, deps_factory):
+    async def test_mocked_pr_url_returned_when_env_unset(
+        self, deps_factory, monkeypatch
+    ):
+        """env CODEWIZ_HEAD_REPO 未设时走旧 mock 行为 (向后兼容)."""
+        monkeypatch.delenv("CODEWIZ_HEAD_REPO", raising=False)
         state = new_state(
             session_id="s",
             repo_clone_path="/x",
@@ -102,6 +106,44 @@ class TestNodePrCreator:
         out = await node_pr_creator(state, deps_factory(FakeLLM(canned=[])))
         assert out["pr_url"].startswith("https://github.com/")
         assert "feat/add-view-count" in out["pr_url"]
+
+    async def test_uses_pr_creator_dry_run_when_env_set(
+        self, deps_factory, monkeypatch, tmp_path
+    ):
+        """env CODEWIZ_HEAD_REPO 设了 → 走 PrCreator (默认 dry_run=True)."""
+        from unittest.mock import patch as mock_patch
+        import subprocess
+
+        monkeypatch.setenv("CODEWIZ_HEAD_REPO", "team/conduit")
+        monkeypatch.delenv("CODEWIZ_PR_DRY_RUN", raising=False)  # 默认 true
+
+        state = new_state(
+            session_id="s",
+            repo_clone_path=str(tmp_path),
+            branch_name="feat/x",
+            raw_intent="加 viewCount",
+        )
+        state["matched_skill"] = "add_view_count"
+
+        calls = []
+
+        def fake_run(argv, *args, **kwargs):
+            calls.append(tuple(argv))
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout="patch", stderr=""
+            )
+
+        with mock_patch("subprocess.run", side_effect=fake_run):
+            out = await node_pr_creator(state, deps_factory(FakeLLM(canned=[])))
+
+        assert "dry-run" in out["pr_url"].lower()
+        # 验证 git commands 被调 (checkout/add/commit/format-patch)
+        cmds = [c[:2] for c in calls]
+        assert ("git", "checkout") in cmds
+        assert ("git", "commit") in cmds
+        # dry_run 默认 true → 不应有 git push / gh
+        assert ("git", "push") not in cmds
+        assert not any(c[0] == "gh" for c in calls)
 
 
 # --- v3 §C Step 2: contract 路径新节点 ---
