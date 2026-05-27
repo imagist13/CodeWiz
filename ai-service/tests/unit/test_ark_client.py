@@ -170,3 +170,132 @@ class TestArkClient:
         )
         await client.chat([{"role": "user", "content": "hi"}])
         assert captured["body"]["max_tokens"] == 4096
+
+
+# ---- v3 Task 10: tool-calling + from_env ----
+
+
+def _tool_response(tool_calls, content: str = ""):
+    """assistant 返带 tool_calls 的响应 (OpenAI 协议)."""
+
+    def handler(request):
+        message = {"role": "assistant", "content": content, "tool_calls": tool_calls}
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": message}],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "total_tokens": 30,
+                    "completion_tokens_details": {"reasoning_tokens": 0},
+                },
+            },
+        )
+
+    return handler
+
+
+class TestArkClientToolCalls:
+    async def test_tools_param_injected_into_body(self):
+        captured = {}
+
+        def handler(request):
+            captured["body"] = json.loads(request.content)
+            return _ok_response()(request)
+
+        client = ArkClient(
+            api_key="x", endpoint_id="ep", transport=_mock_transport(handler)
+        )
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "readFileTool",
+                    "description": "...",
+                    "parameters": {"type": "object"},
+                },
+            }
+        ]
+        await client.chat([{"role": "user", "content": "x"}], tools=tools)
+        assert captured["body"]["tools"] == tools
+
+    async def test_tools_omitted_when_none(self):
+        """tools=None 时 body 不能含 tools 字段, 避免某些 API 误判."""
+        captured = {}
+
+        def handler(request):
+            captured["body"] = json.loads(request.content)
+            return _ok_response()(request)
+
+        client = ArkClient(
+            api_key="x", endpoint_id="ep", transport=_mock_transport(handler)
+        )
+        await client.chat([{"role": "user", "content": "x"}])
+        assert "tools" not in captured["body"]
+
+    async def test_response_tool_calls_parsed(self):
+        client = ArkClient(
+            api_key="x",
+            endpoint_id="ep",
+            transport=_mock_transport(
+                _tool_response(
+                    [
+                        {
+                            "id": "call_xyz",
+                            "type": "function",
+                            "function": {
+                                "name": "readFileTool",
+                                "arguments": '{"file":"a.js"}',
+                            },
+                        }
+                    ]
+                )
+            ),
+        )
+        r = await client.chat([{"role": "user", "content": "x"}])
+        assert len(r.tool_calls) == 1
+        assert r.tool_calls[0].id == "call_xyz"
+        assert r.tool_calls[0].name == "readFileTool"
+        assert r.tool_calls[0].arguments == {"file": "a.js"}
+
+    async def test_response_no_tool_calls_defaults_empty(self):
+        client = ArkClient(
+            api_key="x",
+            endpoint_id="ep",
+            transport=_mock_transport(_ok_response("hi")),
+        )
+        r = await client.chat([{"role": "user", "content": "x"}])
+        assert r.tool_calls == []
+
+
+class TestArkClientFromEnv:
+    def test_from_env_success(self, monkeypatch):
+        monkeypatch.setenv("ARK_API_KEY", "sk-test")
+        monkeypatch.setenv("ARK_ENDPOINT", "ep-1")
+        monkeypatch.delenv("ARK_BASE_URL", raising=False)
+        c = ArkClient.from_env()
+        assert c._api_key == "sk-test"
+        assert c._endpoint_id == "ep-1"
+        # 默认 base url
+        assert "ark.cn-beijing.volces.com" in c._url
+
+    def test_from_env_missing_key_raises(self, monkeypatch):
+        monkeypatch.delenv("ARK_API_KEY", raising=False)
+        monkeypatch.setenv("ARK_ENDPOINT", "ep-1")
+        with pytest.raises(RuntimeError):
+            ArkClient.from_env()
+
+    def test_from_env_missing_endpoint_raises(self, monkeypatch):
+        monkeypatch.setenv("ARK_API_KEY", "sk")
+        monkeypatch.delenv("ARK_ENDPOINT", raising=False)
+        with pytest.raises(RuntimeError):
+            ArkClient.from_env()
+
+    def test_from_env_supports_deepseek_base(self, monkeypatch):
+        """切 DeepSeek: ARK_BASE_URL=https://api.deepseek.com + ARK_ENDPOINT=deepseek-chat."""
+        monkeypatch.setenv("ARK_API_KEY", "sk")
+        monkeypatch.setenv("ARK_ENDPOINT", "deepseek-chat")
+        monkeypatch.setenv("ARK_BASE_URL", "https://api.deepseek.com")
+        c = ArkClient.from_env()
+        assert c._url == "https://api.deepseek.com/chat/completions"
