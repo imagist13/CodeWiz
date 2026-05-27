@@ -71,3 +71,50 @@ async def node_pr_creator(state: OrchestratorState, deps: NodeDeps) -> dict:
     return {
         "pr_url": f"https://github.com/codewiz-bot/conduit/pull/mock-{skill}?branch={branch}",
     }
+
+
+# --- v3 §C Step 2: contract 路径节点 ---
+
+
+async def node_load_contract(state: OrchestratorState, deps: NodeDeps) -> dict:
+    """从 registry 拿 skill, 调 contract(filled_params)。
+
+    返 dict (model_dump) 给 LangGraph state, 兼容 PostgresSaver 序列化。
+    返 None 表示该 Skill 走旧 plan() 路径 (graph.py 的 conditional 据此分叉)。
+    """
+    skill = deps.registry.business(state["matched_skill"])
+    contract = skill.contract(state.get("filled_params", {}))
+    if contract is None:
+        return {"skill_contract": None}
+    return {"skill_contract": contract.model_dump()}
+
+
+async def node_explore_edit(state: OrchestratorState, deps: NodeDeps) -> dict:
+    """跑 ExploreEditAgent: contract → 探索 + 编辑 + acceptance 验收."""
+    from app.agents.explore_edit_agent import ExploreEditAgent
+    from app.skills.contract import SkillContract
+    from app.harness.tools import get_tools
+
+    contract_dict = state["skill_contract"]
+    if contract_dict is None:
+        # 防御: 不应该到这里 (graph 已 conditional 分叉)
+        return {"acceptance_results": [], "pending_diff": []}
+
+    contract = SkillContract(**contract_dict)
+    agent = ExploreEditAgent(
+        llm=deps.llm,
+        repo_root=state["repo_clone_path"],
+        tools_schema=get_tools(),
+    )
+    result = await agent.run(contract)
+    return {
+        "acceptance_results": [r.model_dump() for r in result.acceptance],
+        "pending_diff": list(result.diff_files),
+    }
+
+
+async def node_trace(state: OrchestratorState, deps: NodeDeps) -> dict:
+    """v3 §E Task 23 占位: 暂只分配/保留 trace_id, 真 JSONL 落盘等 trace.py 接入."""
+    import uuid
+
+    return {"trace_id": state.get("trace_id") or uuid.uuid4().hex[:12]}

@@ -42,6 +42,12 @@ class OrchestratorState(TypedDict):
     awaiting_gate: Optional[Literal["clarify", "plan", "pr"]]
     pr_url: Optional[str]
 
+    # v3 §C: contract-driven 路径字段 (JSON-serializable, PostgresSaver 兼容)
+    skill_contract: Optional[Dict[str, Any]]  # SkillContract.model_dump() 或 None
+    acceptance_results: List[Dict[str, Any]]  # AcceptanceResult.model_dump() 列表
+    pending_diff: List[str]  # ExploreEditAgent 改过的 file 路径
+    trace_id: Optional[str]  # JSONL trace 关联 id
+
 
 def new_state(
     *, session_id: str, repo_clone_path: str, branch_name: str, raw_intent: str
@@ -63,4 +69,8 @@ def new_state(
         step_events=[],
         awaiting_gate=None,
         pr_url=None,
+        skill_contract=None,
+        acceptance_results=[],
+        pending_diff=[],
+        trace_id=None,
     )

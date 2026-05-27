@@ -48,3 +48,38 @@ class TestStepEvent:
             "error": None,
         }
         assert ev["status"] == "pending"
+
+
+class TestNewStateContractFields:
+    """v3 §C Step 1: state 加 4 个 contract 相关字段."""
+
+    def test_contract_fields_default(self):
+        s = new_state(
+            session_id="x", repo_clone_path="/x", branch_name="b", raw_intent="i"
+        )
+        assert s["skill_contract"] is None
+        assert s["acceptance_results"] == []
+        assert s["pending_diff"] == []
+        assert s["trace_id"] is None
+
+    def test_contract_fields_serializable(self):
+        """所有新字段必须是 JSON 可序列化原生类型 (PostgresSaver 约束)."""
+        import json
+
+        s = new_state(
+            session_id="x", repo_clone_path="/x", branch_name="b", raw_intent="i"
+        )
+        s["skill_contract"] = {
+            "goal": "加 viewCount",
+            "constraints": [],
+            "forbid": [],
+            "acceptance": [],
+            "candidate_symbols": [],
+        }
+        s["acceptance_results"] = [
+            {"check": "FileContains(...)", "ok": True, "detail": ""}
+        ]
+        s["pending_diff"] = ["x.jsx", "y.jsx"]
+        s["trace_id"] = "trace_abc"
+        # 不抛 = 可序列化
+        json.dumps(s, ensure_ascii=False)

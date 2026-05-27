@@ -1,6 +1,17 @@
+"""旧 e2e: add_view_count 走旧 plan() 路径 → step_executor。
+
+v3 起 add_view_count 已迁移到 contract() / ExploreEditAgent 路径,
+该测试自动 skip。新路径由 test_explore_edit_agent + test_orchestrator_nodes
++ test_graph_compile 覆盖, 真 Conduit e2e 见 §E 待加。
+
+保留文件作为旧路径历史快照, 不删除便于回滚比较。
+"""
+
 import json
 import shutil
 from pathlib import Path
+
+import pytest
 
 from app.orchestrator.graph import build_graph
 from app.orchestrator.state import new_state
@@ -12,6 +23,11 @@ from app.agents.llm_protocol import FakeLLM
 
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "conduit_mini"
+
+
+pytestmark = pytest.mark.skip(
+    reason="add_view_count 迁移到 v3 contract 路径, 旧 plan() e2e 不再适用"
+)
 
 
 # 复用 tests/unit/test_step_executor.py 里已验证通过的 _MODEL_DIFF
