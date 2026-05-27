@@ -21,6 +21,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -190,7 +191,11 @@ class ExploreEditAgent:
                 }
             )
             for tc in resp.tool_calls:
-                tool_result = self.dispatch(tc.name, tc.id, tc.arguments)
+                # v3 review #2: dispatch 是 sync (subprocess/IO), 在 async loop 里
+                # 必须 to_thread 包装, 否则 npm test 类长跑命令会冻住 event loop
+                tool_result = await asyncio.to_thread(
+                    self.dispatch, tc.name, tc.id, tc.arguments
+                )
                 # diff_files 收集 (仅写工具成功时)
                 if not tool_result.is_error and tc.name in _WRITE_TOOLS_FILE_KEY:
                     key = _WRITE_TOOLS_FILE_KEY[tc.name]
