@@ -41,3 +41,45 @@ class TestAddViewCountSkill:
         for step in s.plan({"default": 100}):
             if step.action == "edit_sequelize_model":
                 assert step.dsl["default"] == 100
+
+    # --- v3 新路径: contract_l1a / contract_l1b ---
+
+    def test_contract_l1a_frontend_only(self):
+        s = AddViewCountSkill()
+        c = s.contract_l1a()
+        assert "viewCount" in c.goal
+        assert any("frontend" in x for x in c.constraints)
+        assert any("不实现真实递增" in x for x in c.forbid)
+        # 至少 3 个 acceptance: GrepInDir + FileContains + ForbidContains
+        assert len(c.acceptance) >= 3
+
+    def test_contract_l1a_forbids_editor_path(self):
+        """v2.1 R-3: ForbidContains 必须指向真实 Conduit 编辑器路径."""
+        from app.skills.acceptance import ForbidContains
+
+        s = AddViewCountSkill()
+        c = s.contract_l1a()
+        forbid_paths = [a.path for a in c.acceptance if isinstance(a, ForbidContains)]
+        assert any("ArticleEditorForm" in p for p in forbid_paths)
+
+    def test_contract_l1b_includes_migration_acceptance(self):
+        """v2.1 R-4: L1-B goal 说 model+migration+controller, acceptance 必须覆盖 migration."""
+        from app.skills.acceptance import GrepInDir
+
+        s = AddViewCountSkill()
+        c = s.contract_l1b()
+        grep_dirs = [a.dir for a in c.acceptance if isinstance(a, GrepInDir)]
+        assert any("backend/models" in d for d in grep_dirs)
+        assert any("backend/migrations" in d for d in grep_dirs)
+        assert any("backend/controllers" in d for d in grep_dirs)
+        assert any("frontend/src" in d for d in grep_dirs)
+
+    def test_contract_default_returns_l1a(self):
+        s = AddViewCountSkill()
+        assert s.contract({}).goal == s.contract_l1a().goal
+
+    def test_other_skill_contract_returns_none(self):
+        """旧 Skill 没 override contract() 必须返 None (走旧 plan 路径)."""
+        from app.skills.business.add_about_me_tab import AddAboutMeTabSkill
+
+        assert AddAboutMeTabSkill().contract({}) is None
