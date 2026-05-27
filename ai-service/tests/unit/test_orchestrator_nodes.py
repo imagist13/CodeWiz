@@ -243,3 +243,47 @@ class TestNodeTrace:
         state["trace_id"] = "preset_id"
         out = await node_trace(state, deps_factory(FakeLLM(canned=[])))
         assert out["trace_id"] == "preset_id"
+
+    async def test_writes_jsonl_events_from_state(
+        self, deps_factory, tmp_path, monkeypatch
+    ):
+        """state 含 contract / diff / acceptance / pr_url → 4 类事件落盘."""
+        from app.orchestrator.nodes import node_trace
+        import json
+
+        log = tmp_path / "trace.jsonl"
+        monkeypatch.setenv("CODEWIZ_TRACE_PATH", str(log))
+
+        state = new_state(
+            session_id="s",
+            repo_clone_path="/x",
+            branch_name="feat/x",
+            raw_intent="加 viewCount",
+        )
+        state["matched_skill"] = "add_view_count"
+        state["skill_contract"] = {
+            "goal": "加 viewCount",
+            "constraints": [],
+            "forbid": [],
+            "acceptance": [{"kind": "file_contains"}, {"kind": "grep_in_dir"}],
+            "candidate_symbols": [],
+        }
+        state["pending_diff"] = ["x.jsx", "y.jsx"]
+        state["acceptance_results"] = [
+            {"check": "FileContains(...)", "ok": True, "detail": ""},
+            {"check": "GrepInDir(...)", "ok": False, "detail": "hits=0"},
+        ]
+        state["pr_url"] = "https://github.com/team/conduit/pull/1"
+
+        await node_trace(state, deps_factory(FakeLLM(canned=[])))
+
+        lines = log.read_text().strip().splitlines()
+        kinds = [json.loads(ln)["kind"] for ln in lines]
+        # 1 contract_loaded + 1 diff_summary + 2 acceptance + 1 pr_created
+        assert kinds.count("contract_loaded") == 1
+        assert kinds.count("diff_summary") == 1
+        assert kinds.count("acceptance") == 2
+        assert kinds.count("pr_created") == 1
+        # 所有事件共享同一 trace_id
+        ids = {json.loads(ln)["trace_id"] for ln in lines}
+        assert len(ids) == 1

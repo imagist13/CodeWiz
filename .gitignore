@@ -82,3 +82,11 @@ logs/
 *.temp
 tmp/
 temp/
+
+# ===================
+# v3 Contract+Agent (Conduit clone + 测试覆盖产物)
+# ===================
+ai-service/external/
+.coverage
+.coverage.*
+htmlcov/

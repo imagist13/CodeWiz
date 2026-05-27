@@ -154,7 +154,55 @@ async def node_explore_edit(state: OrchestratorState, deps: NodeDeps) -> dict:
 
 
 async def node_trace(state: OrchestratorState, deps: NodeDeps) -> dict:
-    """v3 §E Task 23 占位: 暂只分配/保留 trace_id, 真 JSONL 落盘等 trace.py 接入."""
-    import uuid
+    """v3 §E Task 23: 主链路收尾事件落 JSONL.
 
-    return {"trace_id": state.get("trace_id") or uuid.uuid4().hex[:12]}
+    落 4 类事件 (基于 state):
+      contract_loaded / diff_summary / acceptance / pr_created
+    trace 路径由 env CODEWIZ_TRACE_PATH 控制, 默认 logs/trace.jsonl。
+    """
+    import os
+    import uuid
+    from app.observability.trace import JsonlTracer
+
+    trace_id = state.get("trace_id") or uuid.uuid4().hex[:12]
+    tracer = JsonlTracer(path=os.environ.get("CODEWIZ_TRACE_PATH", "logs/trace.jsonl"))
+
+    skill_contract = state.get("skill_contract")
+    if skill_contract:
+        tracer.event(
+            "contract_loaded",
+            trace_id=trace_id,
+            skill=state.get("matched_skill"),
+            goal=skill_contract.get("goal", ""),
+            n_acceptance=len(skill_contract.get("acceptance", [])),
+        )
+
+    pending = state.get("pending_diff") or []
+    if pending:
+        tracer.event(
+            "diff_summary",
+            trace_id=trace_id,
+            files=list(pending),
+            n_files=len(pending),
+        )
+
+    for r in state.get("acceptance_results") or []:
+        tracer.event(
+            "acceptance",
+            trace_id=trace_id,
+            check=r.get("check", ""),
+            ok=r.get("ok", False),
+            detail=r.get("detail", ""),
+        )
+
+    pr_url = state.get("pr_url")
+    if pr_url:
+        tracer.event(
+            "pr_created",
+            trace_id=trace_id,
+            url=pr_url,
+            branch=state.get("branch_name"),
+            dry_run="dry-run" in pr_url.lower(),
+        )
+
+    return {"trace_id": trace_id}
