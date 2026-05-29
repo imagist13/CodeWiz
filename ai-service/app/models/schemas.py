@@ -20,8 +20,9 @@ class ChatRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
     messages: List[UIMessage]
-    repo_id: Optional[str] = Field(default=None, validation_alias="repoId")
+    user_id: Optional[str] = Field(default=None, validation_alias="userId")
     conversation_id: Optional[str] = Field(default=None, validation_alias="conversationId")
+    repo_id: Optional[str] = Field(default=None, validation_alias="repoId")
     project_id: Optional[str] = Field(default=None)
 
 

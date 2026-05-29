@@ -15,7 +15,7 @@ AI Service 是 **CodeWiz** 项目的核心组件之一，是一个基于 FastAPI
 | 数据库 | PostgreSQL + SQLAlchemy ORM |
 | 认证 | JWT（通过 Go Backend 验证） |
 | 工具系统 | 自定义 Tool Registry（Agent Tools） |
-| 沙箱管理 | Python Subprocess + HTTP 静态服务器 |
+| 沙箱管理 | 用户目录操作（基于 votx-agent 模式） |
 
 ---
 
@@ -31,14 +31,11 @@ ai-service/
 │   │   └── security.py              # JWT 鉴权（委托 Go Backend 验证）
 │   ├── api/
 │   │   ├── chat.py                  # 对话 API（流式 SSE）
-│   │   ├── conversation.py           # 会话管理 API
-│   │   ├── auth.py                  # 用户信息 API
-│   │   └── sandbox.py               # 沙箱管理 API
+│   │   └── conversation.py           # 会话管理 API
 │   ├── harness/
 │   │   ├── agent.py                 # LangChain Agent Loop（工具调用循环）
 │   │   ├── tools.py                 # 工具注册表（所有 AI 可调用的工具）
-│   │   ├── sandbox_manager.py       # 项目沙箱管理器
-│   │   └── sandbox.py               # 沙箱执行器
+│   │   ├── _common.py                # 公共模块（路径安全、命令安全、SSRF 防护）
 │   ├── models/
 │   │   ├── database.py              # SQLAlchemy 数据模型
 │   │   └── schemas.py               # Pydantic 请求/响应模型
@@ -86,9 +83,9 @@ AI Agent 可调用的所有工具定义在 `app/harness/tools.py` 中：
 
 | 工具名称 | 功能 |
 |----------|------|
-| `bashTool` | 在项目目录中执行 Shell 命令 |
+| `bashTool` | 在用户目录执行 Shell 命令 |
 | `readFileTool` | 读取文件内容 |
-| `writeFileTool` | 写入文件（自动启动沙箱） |
+| `writeFileTool` | 写入文件 |
 | `searchFilesTool` | 在目录中搜索文本 |
 | `listFilesTool` | 列出目录文件 |
 | `replaceInFileTool` | 替换文件中的文本 |
@@ -97,26 +94,24 @@ AI Agent 可调用的所有工具定义在 `app/harness/tools.py` 中：
 | `movePathTool` | 移动/重命名文件或目录 |
 | `deletePathTool` | 删除文件或目录 |
 | `checkAppTool` | 检查端口上的应用状态 |
-| `startDevServerTool` | 启动项目开发服务器 |
+| `startPreviewTool` | 启动用户目录的预览服务 |
 | `getPreviewUrlTool` | 获取当前预览 URL |
-| `updateProjectPreviewTool` | 将预览 URL 保存到 Go Backend |
 | `commitTool` | Git 提交更改 |
-| `devServerLogsTool` | 读取开发服务器日志 |
 
-### 3. 沙箱管理器（Sandbox Manager）
+### 3. 用户目录操作
 
-**入口**: `POST /api/sandbox/start/{project_id}` 等
+基于 votx-agent 模式，所有工具在用户目录下操作：
 
-每个项目拥有独立的沙箱，包含：
-- **代码目录**: `<sandbox_root>/<project_id>/`
-- **静态预览服务器**: Python `http.server`，端口 31000-31999（由 project_id 哈希决定）
-- **开发服务器**: 如果项目有 `package.json` 的 dev 脚本，自动启动
+**用户目录结构**：`user_data_root/<user_id>/`
 
-**端口分配算法**：使用 FNV-1a 哈希，确保同一 project_id 始终映射到相同端口。
+**安全特性**：
+- 路径安全：相对路径以项目根为基准，防止路径穿越
+- 命令安全：危险命令拦截（rm -rf、dd、mkfs 等）
+- SSRF 防护：URL 校验，防止访问内网地址
+- shell=False：使用 shlex 安全解析命令
+- 环境变量清理：剥离敏感信息
 
-**沙箱根目录**：
-- Linux: `/tmp/codewiz-sandbox`
-- Windows: `%TEMP%/codewiz-sandbox`
+**预览服务**：端口范围 31000-31999，由路径哈希决定
 
 ### 4. 会话管理（Conversation）
 
@@ -143,9 +138,6 @@ AI Agent 可调用的所有工具定义在 `app/harness/tools.py` 中：
 | `POST` | `/api/repos/{repo_id}/conversations` | 创建新会话 |
 | `GET` | `/api/repos/{repo_id}/conversations/{id}` | 获取会话详情（含消息） |
 | `DELETE` | `/api/repos/{repo_id}/conversations/{id}` | 删除会话 |
-| `POST` | `/api/sandbox/start/{project_id}` | 启动项目沙箱 |
-| `GET` | `/api/sandbox/status/{project_id}` | 获取沙箱状态 |
-| `POST` | `/api/sandbox/stop/{project_id}` | 停止沙箱 |
 
 ---
 
@@ -209,16 +201,14 @@ AI Service 与 Go Backend 紧密协作：
 
 ## 工作流程示例
 
-用户请求："帮我创建一个计数器"
+用户请求："帮我创建一个 HTML 页面"
 
 ```
 用户  →  FastAPI (/api/chat)  →  Agent Loop  →  LLM (Silicon Flow)
                                               ↓
                                         writeFileTool (写 index.html)
                                         ↓
-                                        startDevServerTool (启动预览服务器)
+                                        startPreviewTool (启动预览服务器)
                                         ↓
-                                        updateProjectPreviewTool (保存预览 URL 到 Backend)
-                                        ↓
-前端收到 SSE 流 → 显示 AI 回复 + 预览 iframe (加载 /api/sandbox-preview/<repoId>)
+                                        返回预览地址给用户
 ```

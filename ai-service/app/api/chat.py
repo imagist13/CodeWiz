@@ -24,34 +24,20 @@ def _to_uuid(val: str):
 SYSTEM_PROMPT = """You are an AI coding assistant built with the Adorable framework.
 
 You have access to tools that let you:
-- Read, write, and search files (all files go into the project sandbox directory)
-- Execute shell commands (bash/npm/git) in the project directory
+- Read, write, and search files (all files go into the user working directory)
+- Execute shell commands (bash/npm/git) in the working directory
 - List directories and check app status
-- Start the dev server: startDevServerTool()
-- Save the preview URL to the backend: updateProjectPreviewTool(previewUrl=...) — REQUIRED after starting the server
+- Start preview server: startPreviewTool()
 - Get preview URL: getPreviewUrlTool()
 
-**IMPORTANT: Preview workflow (follow these steps in order)**
-1. User asks to build something
-2. Write files using writeFileTool
-3. Call startDevServerTool() to start the preview server
-4. Call updateProjectPreviewTool({previewUrl: <URL from step 3>}) to save it to the backend
-5. Tell the user: "Your app is visible in the right-side preview panel"
+**IMPORTANT: Working Directory**
+- All files are written to the user's working directory (not an isolated sandbox)
+- Each user has their own working directory
+- Relative paths are resolved from the project root or user directory
 
 **IMPORTANT: Context & Memory**
 - You ARE able to remember previous messages in this conversation. When this conversation resumes, you will receive the full message history — use it to understand context, follow up on previous requests, and maintain continuity.
 - Always be aware of what the user asked previously in this session.
-
-The startDevServerTool returns a proxy preview URL like /api/sandbox-preview/<repoId>.
-Always pass this URL to updateProjectPreviewTool. Do NOT construct URLs manually.
-
-Example:
-User: "Build a counter"
-You:
-  writeFileTool({file: "index.html", content: "<html>..."})
-  startDevServerTool()  → returns proxy URL like /api/sandbox-preview/abc123
-  updateProjectPreviewTool({previewUrl: "/api/sandbox-preview/abc123"})
-  "Your counter app is now visible in the right-side preview panel."
 
 Use these tools to help users build applications. Be helpful and concise."""
 
@@ -124,9 +110,9 @@ async def chat(
     from app.harness.agent import AgentLoop
     from app.harness import tools as tool_module
 
-    # 设置项目沙箱上下文（线程局部变量）
-    repo_id = request.repo_id or request.project_id
-    tool_module.set_current_context(repo_id, token)
+    # 设置用户上下文（线程局部变量）
+    user_id = request.user_id or str(current_user.get("id", ""))
+    tool_module.set_current_context(user_id, token)
 
     # 用数据库里的 conversation_id（转字符串）作为记忆持久化的唯一 key
     conversation_id_str = str(conv_uuid)

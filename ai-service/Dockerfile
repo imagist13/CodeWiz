@@ -55,9 +55,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY . .
 
-# Create uploads and sandbox directories
-RUN mkdir -p /tmp/codewiz-sandbox ./uploads && \
-    chown -R appuser:appgroup /tmp/codewiz-sandbox ./uploads
+# Create uploads and user data directories
+RUN mkdir -p ./uploads && \
+    chown -R appuser:appgroup ./uploads
 
 ENV PATH=/home/appuser/.local/bin:/usr/local/bin:/usr/bin:/opt/node-v18.20.4-linux-x64/bin:$PATH
 ENV PYTHONUNBUFFERED=1

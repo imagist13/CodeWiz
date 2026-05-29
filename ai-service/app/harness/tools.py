@@ -1,115 +1,112 @@
 """
-Harness Tool System
-Based on learn-claude-code session patterns
+Harness Tool System — 用户目录操作模式
+基于 votx-agent 风格：所有工具在用户目录下操作，支持沙箱安全校验。
 """
-import re
 import json
-import uuid
 import os
+import re
+import shutil
+import subprocess
 import threading
+import uuid
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-from dataclasses import dataclass, field
-from enum import Enum
+
+from app.harness._common import (
+    check_dangerous_command,
+    check_sandbox,
+    err,
+    get_current_user_dir,
+    safe_path,
+    safe_working_dir,
+    sanitize_env,
+    set_current_user_dir,
+    truncate,
+    validate_url,
+    _fmt_size,
+)
 
 # ---------------------------------------------------------------------------
-# Context: 每个 chat 请求携带 repo_id，工具们通过这个 thread-local 变量
-# 知道当前操作的是哪个项目的沙箱目录。
+# Context: 每个 chat 请求携带 user_id，工具们通过这个 thread-local 变量
+# 知道当前操作用户的工作目录。
 # ---------------------------------------------------------------------------
 _context = threading.local()
 
 
-def set_current_context(repo_id: Optional[str], token: Optional[str] = None) -> None:
-    _context.repo_id = repo_id
+def set_current_context(user_id: Optional[str], token: Optional[str] = None) -> None:
+    _context.user_id = user_id
     _context.token = token
 
 
-def get_current_repo_id() -> Optional[str]:
-    return getattr(_context, "repo_id", None)
+def get_current_user_id() -> Optional[str]:
+    return getattr(_context, "user_id", None)
 
 
 def get_current_token() -> Optional[str]:
     return getattr(_context, "token", None)
 
 
-def _sandbox_root() -> str:
+def _get_work_dir() -> str:
     """
-    必须与 sandbox_manager.SANDBOX_ROOT 完全一致。
+    返回当前用户的工作目录。
+    优先用 VOTX_USER_DIR 环境变量（可配置），否则用用户目录。
     """
-    from app.harness.sandbox.sandbox_manager import SANDBOX_ROOT
-
-    return SANDBOX_ROOT
-
-
-def _preview_host() -> str:
-    """
-    返回预览服务器的宿主机地址。
-    - 如果在 Docker 里运行（检测到 DOCKER_* 环境变量），用 host.docker.internal
-    - 否则用 localhost
-    这样浏览器可以直接访问预览服务器。
-    """
-    if os.environ.get("DOCKER_CONTAINER"):
-        return "host.docker.internal"
-    # 其他容器化场景检测
-    if os.path.exists("/.dockerenv"):
-        return "host.docker.internal"
-    return "localhost"
+    work_dir = get_current_user_dir()
+    if not work_dir:
+        user_id = get_current_user_id()
+        if user_id:
+            from app.core.config import get_settings
+            settings = get_settings()
+            work_dir = os.path.join(settings.user_data_root, user_id)
+    if not work_dir:
+        work_dir = os.getcwd()
+    os.makedirs(work_dir, exist_ok=True)
+    return work_dir
 
 
-def _project_dir() -> str:
-    """
-    返回当前项目的代码目录。
-    如果有 repo_id → /tmp/codewiz-sandbox/<repo_id>/
-    否则 → 当前工作目录（向后兼容）
-    """
-    repo_id = get_current_repo_id()
-    if repo_id:
-        root = _sandbox_root()
-        d = os.path.join(root, repo_id)
-        os.makedirs(d, exist_ok=True)
-        return d
-    return os.getcwd()
-
-
-class StopReason(Enum):
+# ---------------------------------------------------------------------------
+# StopReason
+# ---------------------------------------------------------------------------
+class StopReason:
     TOOL_CALLS = "tool_calls"
     DONE = "done"
     ERROR = "error"
 
 
-@dataclass
+# ---------------------------------------------------------------------------
+# Tool 数据类
+# ---------------------------------------------------------------------------
 class ToolCall:
     tool_name: str
     tool_call_id: str
     arguments: Dict[str, Any]
 
 
-@dataclass
 class ToolResult:
-    tool_call_id: str
-    tool_name: str
-    result: Any
-    is_error: bool = False
+    def __init__(self, tool_call_id: str, tool_name: str, result: Any, is_error: bool = False):
+        self.tool_call_id = tool_call_id
+        self.tool_name = tool_name
+        self.result = result
+        self.is_error = is_error
 
 
-@dataclass
 class Tool:
-    name: str
-    description: str
-    input_schema: Dict[str, Any]
-    handler: Callable
+    def __init__(self, name: str, description: str, input_schema: Dict[str, Any], handler: Callable):
+        self.name = name
+        self.description = description
+        self.input_schema = input_schema
+        self.handler = handler
 
 
+# ---------------------------------------------------------------------------
+# 工具注册表
+# ---------------------------------------------------------------------------
 TOOL_REGISTRY: Dict[str, Tool] = {}
 
 
 def register_tool(name: str, description: str, input_schema: Dict[str, Any]):
     def decorator(func: Callable):
-        tool = Tool(
-            name=name,
-            description=description,
-            input_schema=input_schema,
-            handler=func
-        )
+        tool = Tool(name=name, description=description, input_schema=input_schema, handler=func)
         TOOL_REGISTRY[name] = tool
         return func
     return decorator
@@ -146,133 +143,170 @@ def dispatch_tool(tool_name: str, tool_call_id: str, arguments) -> ToolResult:
             except json.JSONDecodeError:
                 arguments = {}
         result = tool.handler(**arguments)
-        return ToolResult(
-            tool_call_id=tool_call_id,
-            tool_name=tool_name,
-            result=result
-        )
+        return ToolResult(tool_call_id=tool_call_id, tool_name=tool_name, result=result)
     except Exception as e:
-        return ToolResult(
-            tool_call_id=tool_call_id,
-            tool_name=tool_name,
-            result=str(e),
-            is_error=True
-        )
+        return ToolResult(tool_call_id=tool_call_id, tool_name=tool_name, result=str(e), is_error=True)
 
 
 async def dispatch_tool_async(tool_name: str, tool_call_id: str, arguments) -> ToolResult:
-    """异步版本的 dispatch_tool，使用 asyncio.to_thread 在线程池中执行阻塞代码，不阻塞 AsyncIO 事件循环"""
     import asyncio
-    # 先把 context 里的 repo_id/token 捕获下来，传给子线程
-    captured_repo_id = get_current_repo_id()
+    captured_user_id = get_current_user_id()
     captured_token = get_current_token()
 
     def _sync_wrapper():
-        set_current_context(captured_repo_id, captured_token)
+        set_current_context(captured_user_id, captured_token)
         return dispatch_tool(tool_name, tool_call_id, arguments)
 
     return await asyncio.to_thread(_sync_wrapper)
 
 
+# ---------------------------------------------------------------------------
+# 工具实现
+# ---------------------------------------------------------------------------
+
 @register_tool(
     name="bashTool",
-    description="Execute a shell command in the project directory. Use for running build tools, npm, git, etc.",
+    description="Execute a shell command. shell=False 安全模式，危险命令被拦截。支持任意命令，超时 120 秒。",
     input_schema={
         "type": "object",
         "properties": {
-            "command": {"type": "string", "description": "The shell command to execute (runs in project sandbox directory)"}
+            "command": {"type": "string", "description": "要执行的命令（shlex 解析）"},
+            "working_dir": {"type": "string", "description": "工作目录（可选，默认用户目录）"}
         },
         "required": ["command"]
     }
 )
-def bash_tool(command: str) -> str:
-    import subprocess
-    cwd = _project_dir()
+def bash_tool(command: str, working_dir: str = "") -> str:
+    import shlex
+
+    if not command.strip():
+        return err("命令为空")
+
+    danger_err = check_dangerous_command(command)
+    if danger_err:
+        return err(danger_err)
+
+    wd = working_dir.strip() or _get_work_dir()
+    wd_err = safe_working_dir(wd)
+    if wd_err:
+        return err(wd_err)
+
+    cwd = Path(wd).resolve()
+
+    # cmd.exe /c 时注入 UTF-8 代码页，防止中文路径乱码
+    cmd = command.strip()
+    if cmd[:4].lower() == "cmd " or cmd[:8].lower() == "cmd.exe ":
+        m = re.match(r'(cmd(\.exe)?)\s+(/[ck])\s+', cmd, re.IGNORECASE)
+        if m:
+            rest = cmd[m.end():].strip()
+            if rest.startswith('"') and rest.endswith('"'):
+                rest = rest[1:-1]
+            rest_escaped = rest.replace('"', '\\"')
+            cmd = f'{m.group(1)} {m.group(3)} "chcp 65001 > nul & {rest_escaped}"'
+
     try:
-        result = subprocess.run(
-            command,
-            shell=True,
+        args = shlex.split(cmd)
+    except ValueError as e:
+        return err(f"命令解析失败: {e}")
+
+    try:
+        r = subprocess.run(
+            args,
+            shell=False,
             capture_output=True,
-            text=True,
             timeout=120,
-            cwd=cwd,
+            encoding="utf-8",
+            errors="replace",
+            text=True,
+            cwd=str(cwd),
+            env=sanitize_env(),
         )
-        output = result.stdout
-        if result.stderr:
-            output += "\n[STDERR]\n" + result.stderr
-        return output if output else "(no output)"
+        output = r.stdout.strip() or r.stderr.strip() or f"(exit={r.returncode})"
+        return truncate(output, max_len=100000)
+    except FileNotFoundError:
+        return err(f"命令未找到: {args[0]}")
     except subprocess.TimeoutExpired:
-        return "Command timed out after 120 seconds"
+        return err("命令超时 (120s)")
     except Exception as e:
-        return f"Error: {str(e)}"
+        return err(f"执行失败: {e}")
 
 
 @register_tool(
     name="readFileTool",
-    description="Read the contents of a file",
+    description="Read the contents of a file. 受沙箱保护（只能在项目根或用户目录下读取）。支持 UTF-8 和 GBK 编码自动回退，附带 20MB 大小限制。",
     input_schema={
         "type": "object",
         "properties": {
-            "file": {"type": "string", "description": "Path to the file (relative to project directory)"}
+            "path": {"type": "string", "description": "文件路径（相对或绝对路径）"}
         },
-        "required": ["file"]
+        "required": ["path"]
     }
 )
-def read_file_tool(file: str) -> str:
+def read_file_tool(path: str) -> str:
+    p = safe_path(path)
+    if p is None:
+        return err(f"无效路径: {path}")
+
+    resolved = check_sandbox(p)
+    if not resolved:
+        return err(f"路径越权，只能在项目根或用户目录下读取: {path}")
+
+    if not resolved.exists():
+        return err(f"文件不存在: {resolved}")
+    if resolved.is_dir():
+        return err(f"路径是目录而非文件: {resolved}")
+
     try:
-        # 如果是绝对路径直接用；否则拼接到项目目录
-        if not os.path.isabs(file):
-            file = os.path.join(_project_dir(), file)
-        with open(file, "r", encoding="utf-8") as f:
-            return f.read()
+        size = resolved.stat().st_size
+        if size > 20 * 1024 * 1024:
+            return err(f"文件过大，无法读取（超过20MB）: {resolved}")
+    except OSError:
+        pass
+
+    try:
+        content = resolved.read_text(encoding="utf-8")
+        return truncate(content)
+    except UnicodeDecodeError:
+        try:
+            content = resolved.read_text(encoding="gbk")
+            return truncate(content)
+        except Exception as e:
+            return err(f"读取失败（编码错误）: {e}")
     except Exception as e:
-        return f"Error reading file: {str(e)}"
+        return err(f"读取失败: {e}")
 
 
 @register_tool(
     name="writeFileTool",
-    description="Write content to a file. Creates the file if it doesn't exist. All files go into the project sandbox directory.",
+    description="Write content to a file. 自动创建父目录。沙箱保护，若路径越权则写入到用户目录下的同名文件。",
     input_schema={
         "type": "object",
         "properties": {
-            "file": {"type": "string", "description": "Path to the file (relative to project directory)"},
-            "content": {"type": "string", "description": "Content to write"}
+            "path": {"type": "string", "description": "文件路径（相对或绝对路径）"},
+            "content": {"type": "string", "description": "要写入的内容"}
         },
-        "required": ["file", "content"]
+        "required": ["path", "content"]
     }
 )
-def write_file_tool(file: str, content: str) -> str:
+def write_file_tool(path: str, content: str) -> str:
+    p = safe_path(path)
+    if p is None:
+        return err(f"无效路径: {path}")
+
+    resolved = check_sandbox(p)
+
+    if not resolved:
+        fallback_dir = _get_work_dir()
+        resolved = Path(fallback_dir).resolve() / p.name
+
     try:
-        if not os.path.isabs(file):
-            file = os.path.join(_project_dir(), file)
-        dir_path = os.path.dirname(file)
-        if dir_path:
-            os.makedirs(dir_path, exist_ok=True)
-        with open(file, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        # Auto-start sandbox when first file is written
-        _ensure_sandbox_running()
-
-        return f"File written: {file}"
+        if resolved.exists() and resolved.is_dir():
+            return err(f"路径已存在且是目录，无法覆盖: {resolved}")
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        resolved.write_text(content, encoding="utf-8")
+        return f"OK: 已写入 {resolved} ({len(content)} 字符)"
     except Exception as e:
-        return f"Error writing file: {str(e)}"
-
-
-def _ensure_sandbox_running() -> None:
-    """Start the sandbox server if not already running (idempotent)."""
-    from app.harness.sandbox.sandbox_manager import get_sandbox_manager
-    repo_id = get_current_repo_id()
-    if not repo_id:
-        return
-    try:
-        mgr = get_sandbox_manager()
-        # init_project creates dir + writes port_map.json if missing
-        mgr.init_project(repo_id)
-        # start_dev_server is idempotent (checks is_running)
-        mgr.start_dev_server(repo_id)
-    except Exception:
-        pass  # Non-critical — sandbox start failures shouldn't block file writes
+        return err(f"写入失败: {e}")
 
 
 @register_tool(
@@ -281,17 +315,25 @@ def _ensure_sandbox_running() -> None:
     input_schema={
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Text to search for"},
-            "path": {"type": "string", "description": "Directory path to search in (relative to project directory)"}
+            "query": {"type": "string", "description": "要搜索的文本"},
+            "path": {"type": "string", "description": "搜索目录路径（相对或绝对路径，默认当前用户目录）"}
         },
         "required": ["query"]
     }
 )
-def search_files_tool(query: str, path: str = ".") -> str:
-    search_dir = os.path.join(_project_dir(), path) if not os.path.isabs(path) else path
+def search_files_tool(query: str, path: str = "") -> str:
+    search_dir_str = path.strip() or _get_work_dir()
+    search_dir = safe_path(search_dir_str)
+    if not search_dir:
+        return err(f"无效路径: {search_dir_str}")
+
+    resolved = check_sandbox(search_dir)
+    if not resolved:
+        return err(f"路径越权，只能搜索项目根或用户目录: {search_dir_str}")
+
     try:
         results = []
-        for root, _, files in os.walk(search_dir):
+        for root, _, files in os.walk(resolved):
             for fname in files:
                 fpath = os.path.join(root, fname)
                 try:
@@ -299,7 +341,7 @@ def search_files_tool(query: str, path: str = ".") -> str:
                         lines = f.readlines()
                     for i, line in enumerate(lines, 1):
                         if query in line:
-                            rel = os.path.relpath(fpath, search_dir)
+                            rel = os.path.relpath(fpath, resolved)
                             results.append(f"{rel}:{i}: {line.rstrip()}")
                 except Exception:
                     pass
@@ -307,7 +349,7 @@ def search_files_tool(query: str, path: str = ".") -> str:
             return "\n".join(results)
         return "No matches found"
     except Exception as e:
-        return f"Error searching: {str(e)}"
+        return err(f"搜索失败: {e}")
 
 
 @register_tool(
@@ -316,36 +358,51 @@ def search_files_tool(query: str, path: str = ".") -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Directory path (relative to project directory)"},
-            "recursive": {"type": "boolean", "description": "List recursively"}
+            "path": {"type": "string", "description": "目录路径（相对或绝对路径，默认用户目录）"},
+            "recursive": {"type": "boolean", "description": "递归列出"}
         }
     }
 )
-def list_files_tool(path: str = ".", recursive: bool = False) -> str:
-    list_dir = os.path.join(_project_dir(), path) if not os.path.isabs(path) else path
+def list_files_tool(path: str = "", recursive: bool = False) -> str:
+    list_dir_str = path.strip() or _get_work_dir()
+    list_dir = safe_path(list_dir_str)
+    if not list_dir:
+        return err(f"无效路径: {list_dir_str}")
+
+    resolved = check_sandbox(list_dir)
+    if not resolved:
+        return err(f"路径越权，只能列出项目根或用户目录: {list_dir_str}")
+
+    if not resolved.exists():
+        return err(f"目录不存在: {resolved}")
+    if not resolved.is_dir():
+        return err(f"不是目录: {resolved}")
+
     lines = []
     try:
         if recursive:
-            for root, dirs, files in os.walk(list_dir):
-                rel_root = os.path.relpath(root, list_dir)
+            for root, dirs, files in os.walk(resolved):
+                rel_root = os.path.relpath(root, resolved)
                 if rel_root == ".":
                     rel_root = ""
-                for d in dirs:
+                for d in sorted(dirs):
                     p = os.path.join(rel_root, d) if rel_root else d
                     lines.append(f"{p}/")
-                for f in files:
+                for f in sorted(files):
                     p = os.path.join(rel_root, f) if rel_root else f
-                    lines.append(f"{p}")
+                    lines.append(p)
         else:
-            for entry in os.listdir(list_dir):
-                full_p = os.path.join(list_dir, entry)
-                if os.path.isdir(full_p):
-                    lines.append(f"{entry}/")
-                else:
-                    lines.append(entry)
+            for entry in sorted(resolved.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+                tag = "/" if entry.is_dir() else ""
+                try:
+                    size = entry.stat().st_size
+                    size_str = _fmt_size(size) if entry.is_file() else "-"
+                except OSError:
+                    size_str = "-"
+                lines.append(f"{entry.name}{tag}  ({size_str})")
         return "\n".join(lines) if lines else "(empty directory)"
     except Exception as e:
-        return f"Error listing files: {str(e)}"
+        return err(f"列目录失败: {e}")
 
 
 @register_tool(
@@ -354,27 +411,36 @@ def list_files_tool(path: str = ".", recursive: bool = False) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "file": {"type": "string", "description": "Path to the file (relative to project directory)"},
-            "old_text": {"type": "string", "description": "Text to replace"},
-            "new_text": {"type": "string", "description": "Replacement text"}
+            "path": {"type": "string", "description": "文件路径"},
+            "old_text": {"type": "string", "description": "被替换的文本"},
+            "new_text": {"type": "string", "description": "替换后的文本"}
         },
-        "required": ["file", "old_text", "new_text"]
+        "required": ["path", "old_text", "new_text"]
     }
 )
-def replace_in_file_tool(file: str, old_text: str, new_text: str) -> str:
+def replace_in_file_tool(path: str, old_text: str, new_text: str) -> str:
+    p = safe_path(path)
+    if p is None:
+        return err(f"无效路径: {path}")
+
+    resolved = check_sandbox(p)
+    if not resolved:
+        return err(f"路径越权: {path}")
+
+    if not resolved.exists():
+        return err(f"文件不存在: {resolved}")
+    if resolved.is_dir():
+        return err(f"路径是目录: {resolved}")
+
     try:
-        if not os.path.isabs(file):
-            file = os.path.join(_project_dir(), file)
-        with open(file, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = resolved.read_text(encoding="utf-8")
         if old_text not in content:
-            return f"Text not found in file: {old_text}"
+            return err(f"文本未找到: {old_text[:100]}")
         content = content.replace(old_text, new_text)
-        with open(file, "w", encoding="utf-8") as f:
-            f.write(content)
-        return f"Replaced in {file}"
+        resolved.write_text(content, encoding="utf-8")
+        return f"OK: 已替换 {resolved}"
     except Exception as e:
-        return f"Error replacing text: {str(e)}"
+        return err(f"替换失败: {e}")
 
 
 @register_tool(
@@ -383,12 +449,12 @@ def replace_in_file_tool(file: str, old_text: str, new_text: str) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "port": {"type": "integer", "description": "Port number to check"}
+            "port": {"type": "string", "description": "端口号"}
         },
         "required": ["port"]
     }
 )
-def check_app_tool(port: int) -> str:
+def check_app_tool(port: str) -> str:
     import urllib.request
     import urllib.error
     try:
@@ -406,24 +472,29 @@ def check_app_tool(port: int) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "file": {"type": "string", "description": "Path to the file (relative to project directory)"},
-            "content": {"type": "string", "description": "Content to append"}
+            "path": {"type": "string", "description": "文件路径"},
+            "content": {"type": "string", "description": "要追加的内容"}
         },
-        "required": ["file", "content"]
+        "required": ["path", "content"]
     }
 )
-def append_to_file_tool(file: str, content: str) -> str:
+def append_to_file_tool(path: str, content: str) -> str:
+    p = safe_path(path)
+    if p is None:
+        return err(f"无效路径: {path}")
+
+    resolved = check_sandbox(p)
+    if not resolved:
+        fallback_dir = _get_work_dir()
+        resolved = Path(fallback_dir).resolve() / p.name
+
     try:
-        if not os.path.isabs(file):
-            file = os.path.join(_project_dir(), file)
-        dir_path = os.path.dirname(file)
-        if dir_path:
-            os.makedirs(dir_path, exist_ok=True)
-        with open(file, "a", encoding="utf-8") as f:
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        with open(resolved, "a", encoding="utf-8") as f:
             f.write(content)
-        return f"Content appended to: {file}"
+        return f"OK: 已追加到 {resolved} ({len(content)} 字符)"
     except Exception as e:
-        return f"Error appending to file: {str(e)}"
+        return err(f"追加失败: {e}")
 
 
 @register_tool(
@@ -432,23 +503,30 @@ def append_to_file_tool(file: str, content: str) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Path of the directory to create (relative to project directory)"},
-            "recursive": {"type": "boolean", "description": "Create parent directories if they don't exist", "default": True}
+            "path": {"type": "string", "description": "目录路径"},
+            "recursive": {"type": "boolean", "description": "递归创建父目录", "default": True}
         },
         "required": ["path"]
     }
 )
 def make_directory_tool(path: str, recursive: bool = True) -> str:
+    p = safe_path(path)
+    if p is None:
+        return err(f"无效路径: {path}")
+
+    resolved = check_sandbox(p)
+    if not resolved:
+        fallback_dir = _get_work_dir()
+        resolved = Path(fallback_dir).resolve() / p.name
+
     try:
-        if not os.path.isabs(path):
-            path = os.path.join(_project_dir(), path)
         if recursive:
-            os.makedirs(path, exist_ok=True)
+            resolved.mkdir(parents=True, exist_ok=True)
         else:
-            os.mkdir(path)
-        return f"Directory created: {path}"
+            resolved.mkdir(parents=False)
+        return f"OK: 已创建目录 {resolved}"
     except Exception as e:
-        return f"Error creating directory: {str(e)}"
+        return err(f"创建目录失败: {e}")
 
 
 @register_tool(
@@ -457,28 +535,33 @@ def make_directory_tool(path: str, recursive: bool = True) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "from": {"type": "string", "description": "Source path (relative to project directory)"},
-            "to": {"type": "string", "description": "Destination path (relative to project directory)"}
+            "from": {"type": "string", "description": "源路径"},
+            "to": {"type": "string", "description": "目标路径"}
         },
         "required": ["from", "to"]
     }
 )
-def move_path_tool(**kwargs: Any) -> str:
-    """JSON 使用键名 from，不能作为 Python 形参名，故用 **kwargs。"""
-    import shutil
-    src = kwargs.get("from") or kwargs.get("from_path")
-    dst = kwargs.get("to") or kwargs.get("to_path")
-    if not src or not dst:
-        return "Error moving path: missing 'from' or 'to'"
-    if not os.path.isabs(src):
-        src = os.path.join(_project_dir(), src)
-    if not os.path.isabs(dst):
-        dst = os.path.join(_project_dir(), dst)
+def move_path_tool(from_: str = "", to: str = "") -> str:
+    src = safe_path(from_)
+    if src is None:
+        return err(f"无效源路径: {from_}")
+    resolved_src = check_sandbox(src)
+    if not resolved_src:
+        return err(f"源路径越权: {from_}")
+
+    dst = safe_path(to)
+    if dst is None:
+        return err(f"无效目标路径: {to}")
+    resolved_dst = check_sandbox(dst)
+    if not resolved_dst:
+        fallback_dir = _get_work_dir()
+        resolved_dst = Path(fallback_dir).resolve() / Path(to).name
+
     try:
-        shutil.move(src, dst)
-        return f"Moved: {src} -> {dst}"
+        shutil.move(str(resolved_src), str(resolved_dst))
+        return f"OK: 已移动 {resolved_src} -> {resolved_dst}"
     except Exception as e:
-        return f"Error moving path: {str(e)}"
+        return err(f"移动失败: {e}")
 
 
 @register_tool(
@@ -487,93 +570,35 @@ def move_path_tool(**kwargs: Any) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Path to delete (relative to project directory)"},
-            "recursive": {"type": "boolean", "description": "Delete directories recursively", "default": False}
+            "path": {"type": "string", "description": "路径"},
+            "recursive": {"type": "boolean", "description": "递归删除目录", "default": False}
         },
         "required": ["path"]
     }
 )
 def delete_path_tool(path: str, recursive: bool = False) -> str:
-    import shutil
+    p = safe_path(path)
+    if p is None:
+        return err(f"无效路径: {path}")
+
+    resolved = check_sandbox(p)
+    if not resolved:
+        return err(f"路径越权: {path}")
+
+    if not resolved.exists():
+        return err(f"路径不存在: {resolved}")
+
     try:
-        if not os.path.isabs(path):
-            path = os.path.join(_project_dir(), path)
-        if os.path.isdir(path):
+        if resolved.is_dir():
             if recursive:
-                shutil.rmtree(path)
+                shutil.rmtree(resolved)
             else:
-                os.rmdir(path)
+                os.rmdir(resolved)
         else:
-            os.remove(path)
-        return f"Deleted: {path}"
+            resolved.unlink()
+        return f"OK: 已删除 {resolved}"
     except Exception as e:
-        return f"Error deleting path: {str(e)}"
-
-
-# ---- Dev Server & Preview Tools --------------------------------------------
-
-@register_tool(
-    name="startDevServerTool",
-    description="Start the development server for the current project. This will make the project visible in the right-side preview panel. Call this after writing files so the user can see the result.",
-    input_schema={
-        "type": "object",
-        "properties": {},
-        "required": []
-    }
-)
-def start_dev_server_tool() -> str:
-    from app.harness.sandbox.sandbox_manager import get_sandbox_manager
-    repo_id = get_current_repo_id()
-    if not repo_id:
-        return "Error: No project context. Cannot start dev server."
-    mgr = get_sandbox_manager()
-    result = mgr.start_dev_server(repo_id)
-    if result.get("success"):
-        preview_url = result.get("preview_url", "")
-        # iframe 通过 /api/sandbox-preview/<repoId> 同源代理访问，
-        # 因此传给前端的 URL 必须是这个代理路径，而不是 localhost:port。
-        proxy_url = f"/api/sandbox-preview/{repo_id}"
-        return (
-            f"Dev server started: internal port {result.get('preview_url', '')}\n"
-            f"Preview URL (use this): {proxy_url}\n"
-            f"The project is now visible in the right-side preview panel."
-        )
-    else:
-        return f"Failed to start dev server: {result.get('message', 'unknown error')}"
-
-
-@register_tool(
-    name="getPreviewUrlTool",
-    description="Get the current preview URL for the project. Call this to check if the dev server is running and get the URL to view the project.",
-    input_schema={
-        "type": "object",
-        "properties": {},
-        "required": []
-    }
-)
-def get_preview_url_tool() -> str:
-    from app.harness.sandbox.sandbox_manager import get_sandbox_manager
-    repo_id = get_current_repo_id()
-    if not repo_id:
-        return "Error: No project context."
-    mgr = get_sandbox_manager()
-    status = mgr.get_status(repo_id)
-    if not status.get("exists"):
-        return "Error: Project sandbox not initialized."
-    preview_url = status.get("preview_url", "")
-    if status.get("is_running"):
-        proxy_url = f"/api/sandbox-preview/{repo_id}"
-        return (
-            f"Preview URL: {proxy_url}\n"
-            f"Dev server is running (internal: {preview_url}). "
-            f"View the project in the right-side preview panel."
-        )
-    else:
-        return (
-            f"Dev server not running.\n"
-            f"Project directory: {status.get('project_dir', '')}\n"
-            f"Call startDevServerTool to start it."
-        )
+        return err(f"删除失败: {e}")
 
 
 @register_tool(
@@ -583,122 +608,114 @@ def get_preview_url_tool() -> str:
         "type": "object",
         "properties": {
             "message": {"type": "string", "description": "Git commit message"},
-            "path": {"type": "string", "description": "Path to the git repository", "default": "."}
+            "path": {"type": "string", "description": "Git 仓库路径（默认用户目录）"}
         },
         "required": ["message"]
     }
 )
-def commit_tool(message: str, path: str = ".") -> str:
-    import subprocess
+def commit_tool(message: str, path: str = "") -> str:
+    cwd_str = path.strip() or _get_work_dir()
+    cwd = safe_path(cwd_str)
+    if not cwd:
+        return err(f"无效路径: {cwd_str}")
+    resolved = check_sandbox(cwd)
+    if not resolved:
+        return err(f"路径越权: {cwd_str}")
+
     try:
-        cwd = _project_dir()
-        subprocess.run(["git", "-C", cwd, "add", "-A"], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(resolved), "add", "-A"], check=True, capture_output=True)
         result = subprocess.run(
-            ["git", "-C", cwd, "commit", "-m", message],
-            capture_output=True,
-            text=True,
+            ["git", "-C", str(resolved), "commit", "-m", message],
+            capture_output=True, text=True,
         )
         if result.returncode == 0:
-            return f"Committed successfully:\n{result.stdout}"
-        else:
-            return f"Commit failed:\n{result.stderr}"
+            return f"OK: 提交成功\n{result.stdout}"
+        return err(f"提交失败: {result.stderr}")
     except subprocess.CalledProcessError as e:
-        return f"Git error: {str(e)}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-
-@register_tool(
-    name="devServerLogsTool",
-    description="Read recent development server logs",
-    input_schema={
-        "type": "object",
-        "properties": {
-            "path": {"type": "string", "description": "Log file path (relative to project directory)", "default": "/tmp/dev-server.log"},
-            "maxLines": {"type": "integer", "description": "Maximum number of lines to return", "default": 50}
-        }
-    }
-)
-def dev_server_logs_tool(path: str = "/tmp/dev-server.log", maxLines: int = 50) -> str:
-    try:
-        if not os.path.isabs(path):
-            path = os.path.join(_project_dir(), path)
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        recent = lines[-maxLines:] if len(lines) > maxLines else lines
-        return "".join(recent) if recent else "No logs available"
+        return err(f"Git 错误: {str(e)}")
     except FileNotFoundError:
-        return "Log file not found"
+        return err("Git 未安装或不在 PATH 中")
     except Exception as e:
-        return f"Error reading logs: {str(e)}"
+        return err(f"错误: {str(e)}")
 
+
+# ---- 预览相关 ----
 
 @register_tool(
-    name="updateProjectPreviewTool",
-    description="Update the project metadata (preview URL, dev terminal URL) so the frontend preview panel can display the project. Call this AFTER starting the dev server.",
+    name="startPreviewTool",
+    description="启动项目预览服务（在用户目录下启动 HTTP 服务器，端口由路径哈希决定）。调用此工具后文件变更可通过预览查看。",
     input_schema={
         "type": "object",
         "properties": {
-            "previewUrl": {"type": "string", "description": "The preview URL returned by startDevServerTool"},
-            "devCommandTerminalUrl": {"type": "string", "description": "The dev command terminal URL (usually same as previewUrl)"},
-            "additionalTerminalsUrl": {"type": "string", "description": "URL for additional terminals"}
+            "path": {"type": "string", "description": "预览目录路径（默认用户目录）", "default": ""}
         },
-        "required": ["previewUrl"]
+        "required": []
     }
 )
-def update_project_preview_tool(
-    previewUrl: str,
-    devCommandTerminalUrl: Optional[str] = None,
-    additionalTerminalsUrl: Optional[str] = None,
-) -> str:
-    """
-    将项目的预览 URL 持久化到 Go Backend。
-    前端 loadRepos() 读取 vm.previewUrl，iframe 据此显示页面。
-
-    previewUrl 可以是：
-    - "/api/sandbox-preview/<repoId>"  (代理路径，推荐)
-    - "http://localhost:31000"          (内部端口，自动转为代理路径)
-    """
-    import httpx
+def start_preview_tool(path: str = "") -> str:
     from app.core.config import get_settings
-
-    repo_id = get_current_repo_id()
-    if not repo_id:
-        return "Error: No project context."
+    preview_dir_str = path.strip() or _get_work_dir()
+    preview_dir = safe_path(preview_dir_str)
+    if not preview_dir:
+        return err(f"无效路径: {preview_dir_str}")
+    resolved = check_sandbox(preview_dir)
+    if not resolved:
+        return err(f"路径越权: {preview_dir_str}")
 
     settings = get_settings()
-    dev_terminal = devCommandTerminalUrl or previewUrl
-    additional = additionalTerminalsUrl or previewUrl
-
-    # 自动将 localhost 端口转换为代理路径
-    stored_preview_url = previewUrl
-    if "localhost" in previewUrl or "127.0.0.1" in previewUrl:
-        stored_preview_url = f"/api/sandbox-preview/{repo_id}"
-
-    token = get_current_token()
-    headers: dict[str, str] = {"Content-Type": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    port = settings.preview_port_start + (hash(str(resolved)) % settings.preview_port_count)
 
     try:
-        with httpx.Client(timeout=10.0) as client:
-            resp = client.put(
-                f"{settings.backend_url}/api/projects/{repo_id}/vm",
-                json={
-                    "vm_id": repo_id,
-                    "source_repo_id": repo_id,
-                    "preview_url": stored_preview_url,
-                    "dev_command_terminal_url": dev_terminal,
-                    "additional_terminals_url": additional,
-                },
-                headers=headers,
-            )
-        if resp.status_code in (200, 201):
-            return (
-                f"Project preview URL saved: {stored_preview_url}\n"
-                "The right-side preview panel should now show your project."
-            )
-        return f"Warning: updateProjectPreviewTool returned {resp.status_code}. Dev server is running but preview may not appear automatically."
-    except Exception as e:
-        return f"Warning: Could not update project metadata: {str(e)}. Dev server is running."
+        existing = subprocess.run(
+            ["python", "-m", "http.server", str(port)],
+            shell=False,
+            capture_output=True,
+            cwd=str(resolved),
+            timeout=2,
+        )
+    except Exception:
+        pass
 
+    import threading
+    def _run():
+        subprocess.run(
+            ["python", "-m", "http.server", str(port), "--bind", "0.0.0.0"],
+            cwd=str(resolved),
+            shell=False,
+        )
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+
+    import time
+    time.sleep(1)
+
+    return (
+        f"OK: 预览服务已启动\n"
+        f"目录: {resolved}\n"
+        f"预览地址: http://localhost:{port}\n"
+        f"（前端需配置 /api/preview 代理到对应端口）"
+    )
+
+
+@register_tool(
+    name="getPreviewUrlTool",
+    description="获取当前项目的预览 URL",
+    input_schema={
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+)
+def get_preview_url_tool() -> str:
+    from app.core.config import get_settings
+    settings = get_settings()
+    work_dir = _get_work_dir()
+    resolved = Path(work_dir).resolve()
+    port = settings.preview_port_start + (hash(str(resolved)) % settings.preview_port_count)
+
+    return (
+        f"预览地址: http://localhost:{port}\n"
+        f"工作目录: {resolved}\n"
+        f"调用 startPreviewTool 启动预览服务"
+    )

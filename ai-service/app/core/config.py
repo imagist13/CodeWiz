@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -76,6 +77,22 @@ class Settings(BaseSettings):
 
     # File storage
     upload_dir: str = "./uploads"
+
+    # User data directory
+    user_data_root: str = ""
+
+    # Preview server ports
+    preview_port_start: int = 31000
+    preview_port_count: int = 1000
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        if not self.user_data_root:
+            import tempfile, sys
+            if sys.platform == "win32":
+                self.user_data_root = os.path.join(os.environ.get("TEMP", "C:\\temp"), "codewiz-users")
+            else:
+                self.user_data_root = os.path.join(os.environ.get("TMPDIR", "/tmp"), "codewiz-users")
 
 
 @lru_cache()
