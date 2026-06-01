@@ -5,9 +5,8 @@ import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { ThreadListPrimitive } from "@assistant-ui/react";
 import { ListTreeIcon, PlusIcon, RocketIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { clientAuthHeaders } from "@/lib/client-auth-headers";
 
-type CodeWizMetadata = {
+type AdorableMetadata = {
   repoId?: string;
 };
 
@@ -21,7 +20,7 @@ type DeploymentTimelineEntry = {
   state: "idle" | "deploying" | "live" | "failed";
 };
 
-const CodeWizLogo = () => (
+const AdorableLogo = () => (
   <svg
     viewBox="0 0 347 280"
     fill="none"
@@ -54,10 +53,10 @@ export function ThreadListSidebar({
 }: React.ComponentProps<typeof Sidebar>) {
   const [tab, setTab] = React.useState<"threads" | "deployments">("threads");
   const { open, setOpen } = useSidebar();
-  const metadata = useAuiState<CodeWizMetadata | undefined>(({ thread }) => {
+  const metadata = useAuiState<AdorableMetadata | undefined>(({ thread }) => {
     for (let i = thread.messages.length - 1; i >= 0; i -= 1) {
-      const m = thread.messages[i]?.metadata?.custom?.codewiz as
-        | CodeWizMetadata
+      const m = thread.messages[i]?.metadata?.custom?.adorable as
+        | AdorableMetadata
         | undefined;
       if (m) return m;
     }
@@ -81,8 +80,8 @@ export function ThreadListSidebar({
           <button
             type="button"
             onClick={() => onTabClick("threads")}
-            title="对话"
-            aria-label="对话"
+            title="Threads"
+            aria-label="Threads"
             className={`mb-1 inline-flex size-8 items-center justify-center rounded-md transition-colors ${
               open && tab === "threads"
                 ? "bg-muted text-foreground"
@@ -94,8 +93,8 @@ export function ThreadListSidebar({
           <button
             type="button"
             onClick={() => onTabClick("deployments")}
-            title="部署"
-            aria-label="部署"
+            title="Deployments"
+            aria-label="Deployments"
             className={`inline-flex size-8 items-center justify-center rounded-md transition-colors ${
               open && tab === "deployments"
                 ? "bg-muted text-foreground"
@@ -115,8 +114,8 @@ export function ThreadListSidebar({
                   className="flex h-9 w-full items-center justify-between gap-2 rounded-lg px-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <span className="flex items-center gap-2">
-                    <CodeWizLogo />
-                    <span className="text-[13px] font-medium">CodeWiz</span>
+                    <AdorableLogo />
+                    <span className="text-[13px] font-medium">Adorable</span>
                   </span>
                   <PlusIcon className="size-3.5" />
                 </Button>
@@ -153,7 +152,6 @@ function DeploymentTimelineList({ repoId }: { repoId?: string }) {
         const params = new URLSearchParams({ repoId, limit: "10" });
         const response = await fetch(
           `/api/deployment-timeline?${params.toString()}`,
-          { headers: clientAuthHeaders() },
         );
         if (!response.ok) return;
         const data = await response.json();
@@ -170,10 +168,10 @@ function DeploymentTimelineList({ repoId }: { repoId?: string }) {
     };
   }, [repoId]);
 
-      if (!repoId) {
+  if (!repoId) {
     return (
       <div className="px-2 py-3 text-xs text-muted-foreground">
-        暂无项目。
+        No project yet.
       </div>
     );
   }
@@ -219,7 +217,7 @@ function DeploymentTimelineList({ repoId }: { repoId?: string }) {
       ))}
       {items.length === 0 && (
         <div className="px-2 py-3 text-xs text-muted-foreground">
-          暂无部署记录。
+          No deployments yet.
         </div>
       )}
     </div>

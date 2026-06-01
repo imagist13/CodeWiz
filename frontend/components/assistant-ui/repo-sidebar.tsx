@@ -20,22 +20,54 @@ import {
   SettingsIcon,
 } from "lucide-react";
 
-import type { RepoDeployment, RepoConversation, RepoItem, RepoVmInfo } from "@/lib/repo-types";
+export type RepoDeployment = {
+  commitSha: string;
+  commitMessage: string;
+  commitDate: string;
+  domain: string;
+  url: string;
+  deploymentId: string | null;
+  state: "idle" | "deploying" | "live" | "failed";
+};
+
+export type RepoConversation = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RepoVmInfo = {
+  vmId: string;
+  previewUrl: string;
+  devCommandTerminalUrl: string;
+  additionalTerminalsUrl: string;
+};
+
+export type RepoItem = {
+  id: string;
+  name: string;
+  vm: RepoVmInfo | null;
+  conversations: RepoConversation[];
+  deployments: RepoDeployment[];
+  productionDomain: string | null;
+  productionDeploymentId: string | null;
+};
 
 const formatRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
   const now = Date.now();
   const diffSeconds = Math.floor((now - date.getTime()) / 1000);
-  if (diffSeconds < 60) return "刚刚";
+  if (diffSeconds < 60) return "just now";
   const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}天前`;
+  return `${diffDays}d ago`;
 };
 
-const CodeWizLogo = () => (
+const AdorableLogo = () => (
   <svg
     viewBox="0 0 347 280"
     fill="none"
@@ -116,8 +148,8 @@ export function RepoSidebar({
           <button
             type="button"
             onClick={() => onTabClick("threads")}
-            title="项目"
-            aria-label="项目"
+            title="Projects"
+            aria-label="Projects"
             className={`inline-flex size-7 items-center justify-center rounded-md transition-colors ${
               open && tab === "threads"
                 ? "bg-muted text-foreground"
@@ -129,8 +161,8 @@ export function RepoSidebar({
           <button
             type="button"
             onClick={() => onTabClick("deployments")}
-            title="部署"
-            aria-label="部署"
+            title="Deployments"
+            aria-label="Deployments"
             className={`inline-flex size-7 items-center justify-center rounded-md transition-colors ${
               open && tab === "deployments"
                 ? "bg-muted text-foreground"
@@ -147,9 +179,9 @@ export function RepoSidebar({
             {/* Brand header */}
             <div className="flex h-12 shrink-0 items-center justify-between px-3">
               <div className="flex items-center gap-2">
-                <CodeWizLogo />
+                <AdorableLogo />
                 <span className="text-sm font-semibold tracking-tight text-foreground">
-                  CodeWiz
+                  Adorable
                 </span>
               </div>
               <button
@@ -157,7 +189,7 @@ export function RepoSidebar({
                 className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
                 onClick={handleCreateRepo}
                 disabled={creatingRepo}
-                title="新建项目"
+                title="New project"
               >
                 <PlusIcon className="size-4" />
               </button>
@@ -204,7 +236,7 @@ function ProjectsList({
   if (repos.length === 0) {
     return (
       <div className="px-3 py-6 text-center text-xs text-muted-foreground/40">
-        暂无项目
+        No projects yet
       </div>
     );
   }
@@ -250,7 +282,7 @@ function DeploymentsList({
   if (!repo) {
     return (
       <div className="px-3 py-6 text-center text-xs text-muted-foreground/40">
-        请先选择一个项目
+        Select a project first
       </div>
     );
   }
@@ -274,7 +306,7 @@ function DeploymentsList({
       <div>
         <div className="flex items-center justify-between px-3 pb-1">
           <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50 uppercase">
-            域名
+            Domain
           </span>
           <ConfigureDomainDialog
             repo={repo}
@@ -294,7 +326,7 @@ function DeploymentsList({
             </a>
           ) : (
             <p className="py-1.5 text-[13px] text-muted-foreground/30">
-              未配置
+              Not configured
             </p>
           )}
         </div>
@@ -304,13 +336,13 @@ function DeploymentsList({
       <div>
         <div className="px-3 pb-1">
           <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50 uppercase">
-            部署记录
+            Deployments
           </span>
         </div>
 
         {items.length === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground/30">
-            暂无部署记录
+            No deployments yet
           </div>
         ) : (
           <div className="space-y-px">
@@ -357,7 +389,7 @@ function DeploymentsList({
                         <>
                           <span className="opacity-40">·</span>
                           <span className="font-medium text-emerald-400">
-                            生产
+                            prod
                           </span>
                         </>
                       )}
@@ -375,7 +407,7 @@ function DeploymentsList({
                             }}
                             disabled={isPromoting}
                           >
-                            {isPromoting ? "升级中…" : "升级"}
+                            {isPromoting ? "promoting…" : "promote"}
                           </button>
                         </>
                       )}
@@ -417,7 +449,7 @@ function ConfigureDomainDialog({
   const handleSave = async () => {
     const nextDomain = domainInput.trim().toLowerCase();
     if (!nextDomain.endsWith(".style.dev")) {
-      setError("域名必须以 .style.dev 结尾");
+      setError("Domain must end in .style.dev");
       return;
     }
 
@@ -430,7 +462,7 @@ function ConfigureDomainDialog({
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "保存域名失败",
+          : "Failed to save domain",
       );
     } finally {
       setIsSaving(false);
@@ -443,16 +475,17 @@ function ConfigureDomainDialog({
         <button
           type="button"
           className="inline-flex size-5 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:text-foreground"
-          title="配置生产域名"
+          title="Configure production domain"
         >
           <SettingsIcon className="size-3" />
         </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>生产环境域名</DialogTitle>
+          <DialogTitle>Production Domain</DialogTitle>
           <DialogDescription>
-            为你的生产环境设置一个自定义的 <span className="font-medium">.style.dev</span> 域名。
+            Set a custom <span className="font-medium">.style.dev</span> domain
+            for your production deployments.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5">
@@ -476,16 +509,16 @@ function ConfigureDomainDialog({
             onClick={() => setOpen(false)}
             disabled={isSaving}
           >
-            取消
+            Cancel
           </Button>
           <Button type="button" onClick={handleSave} disabled={isSaving}>
             {isSaving ? (
               <>
                 <Loader2Icon className="size-4 animate-spin" />
-                保存中…
+                Saving…
               </>
             ) : (
-              "保存"
+              "Save"
             )}
           </Button>
         </DialogFooter>
