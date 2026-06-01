@@ -13,32 +13,39 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useRepos } from "@/lib/repos-context";
-import { useAuth } from "@/lib/auth-context";
+import type { RepoItem } from "@/lib/repo-types";
 import { type FC, useState } from "react";
-import Link from "next/link";
+import { GithubIcon } from "lucide-react";
+
+function getPreviewUrl(repo: RepoItem): string | null {
+  // prefer production domain
+  if (repo.productionDomain) {
+    return `https://${repo.productionDomain}`;
+  }
+  // fall back to live deployment url
+  const live = repo.deployments.find((d) => d.state === "live");
+  if (live?.url) return live.url;
+  // fall back to vm preview
+  if (repo.vm?.previewUrl) return repo.vm.previewUrl;
+  return null;
+}
 
 export const HomeWelcome: FC = () => {
   const { repos, isLoading, onSelectProject } = useRepos();
-  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [githubDialogOpen, setGithubDialogOpen] = useState(false);
   const [githubRepoInput, setGithubRepoInput] = useState("");
   const [githubRepoError, setGithubRepoError] = useState<string | null>(null);
 
-  const handleLogout = async () => {
-    await logout();
-    window.location.href = "/auth/login";
-  };
-
   const handleUseGithubRepo = () => {
     const githubRepoName = githubRepoInput.trim();
     if (!githubRepoName.includes("/")) {
-      setGithubRepoError("仓库格式必须为 owner/repo");
+      setGithubRepoError("Repository must be in owner/repo format");
       return;
     }
 
     setGithubRepoError(null);
     window.dispatchEvent(
-      new CustomEvent("codewiz:create-from-github", {
+      new CustomEvent("adorable:create-from-github", {
         detail: { githubRepoName },
       }),
     );
@@ -47,105 +54,14 @@ export const HomeWelcome: FC = () => {
   };
 
   const hasProjects = repos.length > 0;
-  const showProjects = !authLoading && isAuthenticated && hasProjects;
-
-  if (authLoading) {
-    return (
-      <div className="aui-thread-welcome-root mx-auto flex w-full max-w-(--thread-max-width) grow flex-col items-center justify-center">
-        <div className="flex h-10 w-20 animate-pulse rounded-md bg-muted" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="aui-thread-welcome-root mx-auto flex w-full max-w-(--thread-max-width) grow flex-col items-center justify-center px-2">
-        <div className="flex flex-col items-center gap-6 text-center">
-          <svg
-            viewBox="0 0 347 280"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-10 w-auto"
-          >
-            <path
-              d="M70 267V235.793C37.4932 229.296 13 200.594 13 166.177C13 134.93 33.1885 108.399 61.2324 98.9148C61.9277 51.3467 100.705 13 148.438 13C183.979 13 214.554 34.2582 228.143 64.7527C234.182 63.4301 240.454 62.733 246.89 62.733C295.058 62.733 334.105 101.781 334.105 149.949C334.105 182.845 315.893 211.488 289 226.343V267"
-              className="stroke-foreground/15"
-              strokeWidth="25"
-              strokeLinecap="round"
-            />
-            <path
-              d="M146 237V267"
-              className="stroke-foreground/15"
-              strokeWidth="25"
-              strokeLinecap="round"
-            />
-            <path
-              d="M215 237V267"
-              className="stroke-foreground/15"
-              strokeWidth="25"
-              strokeLinecap="round"
-            />
-          </svg>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              你想构建什么？
-            </h1>
-            <p className="text-sm text-muted-foreground/60">
-              登录以创建和管理你的项目
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button size="lg" asChild className="gap-2">
-              <Link href="/auth/login">登录</Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild className="gap-2">
-              <Link href="/auth/register">注册</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const showProjects = isLoading || hasProjects;
 
   return (
     <div className="aui-thread-welcome-root mx-auto flex w-full max-w-(--thread-max-width) grow flex-col items-center justify-center">
       <div className="flex w-full flex-col gap-8 px-2">
         {/* Hero */}
-          {/* User nav */}
-          <div className="absolute right-0 top-0 flex items-center gap-2">
-            <div className="flex items-center gap-2 text-sm">
-              {user?.name ? (
-                <span className="text-muted-foreground">{user.name}</span>
-              ) : user?.email ? (
-                <span className="text-muted-foreground">{user.email}</span>
-              ) : null}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              登出
-            </Button>
-          </div>
-
-          <div className="flex animate-in flex-col items-center gap-2 pt-8 text-center duration-500 fill-mode-both fade-in">
-            <svg
+        <div className="flex animate-in flex-col items-center gap-2 pt-8 text-center duration-500 fill-mode-both fade-in">
+          <svg
             viewBox="0 0 347 280"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -171,14 +87,14 @@ export const HomeWelcome: FC = () => {
             />
           </svg>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            你想构建什么？
+            What do you want to build?
           </h1>
           <p className="text-sm text-muted-foreground/60">
-            描述你想要的应用，或继续上次的项目
+            Describe an app or pick up where you left off
           </p>
         </div>
 
-        {/* Project cards */}
+        {/* Project cards with previews */}
         <div
           className={cn(
             "flex w-full flex-col gap-3 transition-opacity duration-500",
@@ -204,6 +120,7 @@ export const HomeWelcome: FC = () => {
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {repos.map((repo, index) => {
+                  const previewUrl = getPreviewUrl(repo);
                   return (
                     <button
                       key={repo.id}
@@ -217,16 +134,38 @@ export const HomeWelcome: FC = () => {
                         } as React.CSSProperties
                       }
                     >
-                      {/* Preview placeholder */}
+                      {/* Preview thumbnail */}
                       <div className="relative aspect-16/10 w-full overflow-hidden bg-muted/30">
-                        <div className="flex h-full items-center justify-center">
-                          <span className="text-xs text-muted-foreground/30">
-                            无预览
-                          </span>
-                        </div>
+                        {previewUrl ? (
+                          <iframe
+                            src={previewUrl}
+                            title={`${repo.name} preview`}
+                            className="pointer-events-none absolute inset-0 h-[200%] w-[200%] origin-top-left scale-50 border-0"
+                            tabIndex={-1}
+                            loading="lazy"
+                            sandbox="allow-scripts allow-same-origin"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <span className="text-xs text-muted-foreground/30">
+                              No preview
+                            </span>
+                          </div>
+                        )}
                         {/* Status dot */}
                         <div className="absolute top-2 right-2">
-                          <div className="h-2 w-2 rounded-full bg-muted-foreground/30 ring-2 ring-card/80" />
+                          <div
+                            className={cn(
+                              "h-2 w-2 rounded-full ring-2 ring-card/80",
+                              repo.deployments.some((d) => d.state === "live")
+                                ? "bg-emerald-500"
+                                : repo.deployments.some(
+                                      (d) => d.state === "deploying",
+                                    )
+                                  ? "bg-amber-500"
+                                  : "bg-muted-foreground/30",
+                            )}
+                          />
                         </div>
                       </div>
                       {/* Info */}
@@ -235,14 +174,22 @@ export const HomeWelcome: FC = () => {
                           {repo.name}
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground/50">
-                          点击开始对话
+                          {repo.conversations.length} chat
+                          {repo.conversations.length !== 1 ? "s" : ""}
+                          {repo.deployments.length > 0 && (
+                            <>
+                              {" · "}
+                              {repo.deployments.length} deploy
+                              {repo.deployments.length !== 1 ? "s" : ""}
+                            </>
+                          )}
                         </p>
                       </div>
                     </button>
                   );
                 })}
               </div>
-              {/* Import from GitHub */}
+              {/* Import from GitHub — subtle link below the grid */}
               <button
                 type="button"
                 onClick={() => setGithubDialogOpen(true)}
@@ -254,7 +201,8 @@ export const HomeWelcome: FC = () => {
                   } as React.CSSProperties
                 }
               >
-                从 GitHub 导入
+                <GithubIcon className="h-3 w-3" />
+                Import from GitHub
               </button>
             </>
           ) : null}
@@ -264,9 +212,10 @@ export const HomeWelcome: FC = () => {
       <Dialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>使用 GitHub 仓库</DialogTitle>
+            <DialogTitle>Use GitHub Repo</DialogTitle>
             <DialogDescription>
-              输入仓库地址，格式为 owner/repo。
+              Enter a repository in owner/repo format. If you haven't installed
+              the GitHub App yet, install it first.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -276,7 +225,7 @@ export const HomeWelcome: FC = () => {
                 setGithubRepoInput(event.target.value);
                 setGithubRepoError(null);
               }}
-              placeholder="所有者/仓库名称"
+              placeholder="owner/repository"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -287,6 +236,14 @@ export const HomeWelcome: FC = () => {
             {githubRepoError && (
               <p className="text-[13px] text-destructive">{githubRepoError}</p>
             )}
+            <a
+              href="https://dash.freestyle.sh/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
+            >
+              Install GitHub App (Dashboard → Git → Sync)
+            </a>
           </div>
           <DialogFooter>
             <Button
@@ -294,10 +251,10 @@ export const HomeWelcome: FC = () => {
               variant="ghost"
               onClick={() => setGithubDialogOpen(false)}
             >
-              取消
+              Cancel
             </Button>
             <Button type="button" onClick={handleUseGithubRepo}>
-              创建项目
+              Create Project
             </Button>
           </DialogFooter>
         </DialogContent>

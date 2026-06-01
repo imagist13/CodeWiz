@@ -51,7 +51,11 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import type { FC, ReactNode } from "react";
+import type { FC, KeyboardEvent, ReactNode } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useAui, useAuiState } from "@assistant-ui/react";
+import TextareaAutosize from "react-textarea-autosize";
+import { flushResourcesSync } from "@assistant-ui/tap";
 
 export const Thread: FC<{ welcome?: ReactNode }> = ({ welcome }) => {
   return (
@@ -89,7 +93,7 @@ const ThreadScrollToBottom: FC = () => {
   return (
     <ThreadPrimitive.ScrollToBottom asChild>
       <TooltipIconButton
-        tooltip="滚动到底部"
+        tooltip="Scroll to bottom"
         variant="outline"
         className="aui-thread-scroll-to-bottom absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible dark:bg-background dark:hover:bg-accent"
       >
@@ -99,56 +103,127 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 const Composer: FC = () => {
+  const aui = useAui();
+  const isRunning = useAuiState((s) => s.thread.isRunning);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasQueue = useAuiState((s) => s.thread.capabilities.queue);
+
+  const text = useAuiState((s) => {
+    if (!s.composer.isEditing) return "";
+    return s.composer.text;
+  });
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      if (!aui.composer().getState().isEditing) return;
+      flushResourcesSync(() => {
+        aui.composer().setText(e.target.value);
+      });
+    },
+    [aui],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const state = aui.thread().getState();
+        if (state.isRunning && !hasQueue) return;
+        const domValue = textareaRef.current?.value ?? "";
+        if (domValue.trim()) {
+          flushResourcesSync(() => {
+            aui.composer().setText(domValue);
+          });
+          if (textareaRef.current) textareaRef.current.value = "";
+          setTimeout(() => aui.composer().send(), 0);
+        }
+      }
+    },
+    [aui, hasQueue],
+  );
+
+  const handleSubmit = useCallback(() => {
+    const domValue = textareaRef.current?.value ?? "";
+    if (domValue.trim()) {
+      flushResourcesSync(() => {
+        aui.composer().setText(domValue);
+      });
+      if (textareaRef.current) textareaRef.current.value = "";
+      setTimeout(() => aui.composer().send(), 0);
+    }
+  }, [aui]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const form = textarea.closest("form");
+    if (!form) return;
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      handleSubmit();
+    };
+    form.addEventListener("submit", handler);
+    return () => form.removeEventListener("submit", handler);
+  }, [handleSubmit]);
+
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-      <ComposerPrimitive.AttachmentDropzone className="aui-composer-attachment-dropzone flex w-full flex-col rounded-2xl border border-input bg-background px-1 pt-2 transition-shadow outline-none has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-ring/20 data-[dragging=true]:border-dashed data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50">
+      <ComposerPrimitive.AttachmentDropzone className="aui-composer-attachment-dropzone flex w-full flex-col rounded-2xl border border-input bg-background px-1 pt-2 transition-shadow outline-none has-focus-visible:border-ring has-focus-visible:ring-2 has-focus-visible:ring-ring/20 has-focus:border-ring has-focus:ring-2 has-focus:ring-ring/20 data-[dragging=true]:border-dashed data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50">
         <ComposerAttachments />
-        <ComposerPrimitive.Input
-          placeholder="发送消息…"
-          className="aui-composer-input mb-1 max-h-32 min-h-14 w-full resize-none bg-transparent px-4 pt-2 pb-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0"
-          rows={1}
-          aria-label="消息输入框"
-        />
-        <ComposerAction />
+        <div className="mb-1 min-h-14 px-4 pt-2 pb-3">
+          <TextareaAutosize
+            ref={textareaRef}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Send a message..."
+            className="aui-composer-input h-auto min-h-10 w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0"
+            rows={1}
+            aria-label="Message input"
+            maxRows={20}
+          />
+        </div>
+        <ComposerAction isRunning={isRunning} />
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );
 };
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{ isRunning: boolean }> = ({ isRunning }) => {
+  const aui = useAui();
+
   return (
     <div className="aui-composer-action-wrapper relative mx-2 mb-2 flex items-center justify-between">
       <ComposerAddAttachment />
 
-      <AssistantIf condition={({ thread }) => !thread.isRunning}>
+      {!isRunning ? (
         <ComposerPrimitive.Send asChild>
           <TooltipIconButton
-            tooltip="发送消息"
+            tooltip="Send message"
             side="bottom"
             type="submit"
             variant="default"
             size="icon"
             className="aui-composer-send size-8 rounded-full"
-            aria-label="发送消息"
+            aria-label="Send message"
           >
             <ArrowUpIcon className="aui-composer-send-icon size-4" />
           </TooltipIconButton>
         </ComposerPrimitive.Send>
-      </AssistantIf>
-
-      <AssistantIf condition={({ thread }) => thread.isRunning}>
+      ) : (
         <ComposerPrimitive.Cancel asChild>
           <Button
             type="button"
             variant="default"
             size="icon"
             className="aui-composer-cancel size-8 rounded-full"
-            aria-label="停止生成"
+            aria-label="Stop generating"
           >
             <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
           </Button>
         </ComposerPrimitive.Cancel>
-      </AssistantIf>
+      )}
     </div>
   );
 };
@@ -169,7 +244,7 @@ const AssistantMessage: FC = () => {
       className="aui-assistant-message-root relative mx-auto w-full max-w-(--thread-max-width) animate-in py-3 duration-150 fade-in slide-in-from-bottom-1"
       data-role="assistant"
     >
-      <div className="aui-assistant-message-content min-w-0 w-full px-2 leading-relaxed wrap-break-word text-foreground">
+      <div className="aui-assistant-message-content px-2 leading-relaxed wrap-break-word text-foreground">
         <MessagePrimitive.Unstable_PartsGrouped
           groupingFunction={groupConsecutiveToolCalls}
           components={{
@@ -216,7 +291,7 @@ const AssistantActionBar: FC = () => {
       className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
     >
       <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="复制">
+        <TooltipIconButton tooltip="Copy">
           <AssistantIf condition={({ message }) => message.isCopied}>
             <CheckIcon />
           </AssistantIf>
@@ -226,14 +301,14 @@ const AssistantActionBar: FC = () => {
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip="重新生成">
+        <TooltipIconButton tooltip="Refresh">
           <RefreshCwIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Reload>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
           <TooltipIconButton
-            tooltip="更多"
+            tooltip="More"
             className="data-[state=open]:bg-accent"
           >
             <MoreHorizontalIcon />
@@ -247,7 +322,7 @@ const AssistantActionBar: FC = () => {
           <ActionBarPrimitive.ExportMarkdown asChild>
             <ActionBarMorePrimitive.Item className="aui-action-bar-more-item flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
               <DownloadIcon className="size-4" />
-              导出为 Markdown
+              Export as Markdown
             </ActionBarMorePrimitive.Item>
           </ActionBarPrimitive.ExportMarkdown>
         </ActionBarMorePrimitive.Content>
@@ -286,7 +361,7 @@ const UserActionBar: FC = () => {
       className="aui-user-action-bar-root flex flex-col items-end"
     >
       <ActionBarPrimitive.Edit asChild>
-        <TooltipIconButton tooltip="编辑" className="aui-user-action-edit p-4">
+        <TooltipIconButton tooltip="Edit" className="aui-user-action-edit p-4">
           <PencilIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Edit>
@@ -295,21 +370,87 @@ const UserActionBar: FC = () => {
 };
 
 const EditComposer: FC = () => {
+  const aui = useAui();
+
+  const text = useAuiState((s) => {
+    if (s.composer.isEditing) return s.composer.text;
+    return "";
+  });
+
+  const trustedTextRef = useRef("");
+  const isComposingRef = useRef(false);
+
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback(
+    (e: React.CompositionEvent<HTMLTextAreaElement>) => {
+      isComposingRef.current = false;
+      const raw = e.currentTarget.value;
+      if (!aui.composer().getState().isEditing) return;
+      flushResourcesSync(() => {
+        aui.composer().setText(raw);
+      });
+      trustedTextRef.current = raw;
+    },
+    [aui],
+  );
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const raw = e.target.value;
+      if (!aui.composer().getState().isEditing) return;
+      flushResourcesSync(() => {
+        aui.composer().setText(raw);
+      });
+      if (!isComposingRef.current) {
+        trustedTextRef.current = raw;
+      }
+    },
+    [aui],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const trusted = trustedTextRef.current;
+        if (trusted) {
+          flushResourcesSync(() => {
+            aui.composer().setText(trusted);
+          });
+        }
+        setTimeout(() => {
+          aui.composer().send();
+        }, 0);
+      }
+    },
+    [aui],
+  );
+
   return (
     <MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-3">
       <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
-        <ComposerPrimitive.Input
-          className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-sm text-foreground outline-none"
+        <TextareaAutosize
           autoFocus
+          value={text}
+          onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
+          onKeyDown={handleKeyDown}
+          className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-sm text-foreground outline-none"
+          rows={1}
+          maxRows={20}
         />
         <div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">
           <ComposerPrimitive.Cancel asChild>
             <Button variant="ghost" size="sm">
-              取消
+              Cancel
             </Button>
           </ComposerPrimitive.Cancel>
           <ComposerPrimitive.Send asChild>
-            <Button size="sm">发送</Button>
+            <Button size="sm">Update</Button>
           </ComposerPrimitive.Send>
         </div>
       </ComposerPrimitive.Root>
@@ -331,7 +472,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
       {...rest}
     >
       <BranchPickerPrimitive.Previous asChild>
-        <TooltipIconButton tooltip="上一个">
+        <TooltipIconButton tooltip="Previous">
           <ChevronLeftIcon />
         </TooltipIconButton>
       </BranchPickerPrimitive.Previous>
@@ -339,7 +480,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
         <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
       </span>
       <BranchPickerPrimitive.Next asChild>
-        <TooltipIconButton tooltip="下一个">
+        <TooltipIconButton tooltip="Next">
           <ChevronRightIcon />
         </TooltipIconButton>
       </BranchPickerPrimitive.Next>
