@@ -1,0 +1,22 @@
+.container {
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.providerCard {
+  background: var(--h-bg-pane) !important;
+  border-color: var(--h-line) !important;
+  border-radius: 12px !important;
+}
+
+.providerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.table :global(.ant-table) { background: transparent !important; }
+.table :global(.ant-table-thead > tr > th) { background: var(--h-bg-soft) !important; border-bottom-color: var(--h-line) !important; color: var(--h-text-2) !important; }
+.table :global(.ant-table-tbody > tr > td) { border-bottom-color: var(--h-line) !important; }
