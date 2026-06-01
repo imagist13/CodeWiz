@@ -1,0 +1,109 @@
+---
+title: CLI Tools
+description: Manage system CLI tools so Claude can automatically detect and use command-line capabilities on your machine.
+---
+
+# CLI Tools
+
+Many AI workflows require command-line tools — FFmpeg for video processing, jq for JSON parsing, ripgrep for code search. CodePilot's CLI Tools feature helps you manage these tools and lets Claude automatically know what's available on your machine.
+
+## Why This Matters
+
+When you tell Claude "convert this video to MP4," it needs to know whether FFmpeg is installed on your system. Without that knowledge, it can only offer generic advice. With it, Claude can give you a ready-to-run command.
+
+The CLI Tools feature does three things:
+
+1. **Detect** — Automatically scans your system for installed command-line tools
+2. **Recommend** — Offers a curated list of useful tools with one-click installation
+3. **Awareness** — Automatically tells Claude what tools you have during conversations, so it gives more precise answers
+
+## Opening the Tool Manager
+
+Click the **CLI Tools** icon (terminal icon) in the left navigation rail.
+
+The page has two sections:
+
+- **Installed** — Tools detected on your system, showing version and status
+- **Recommended** — Curated tools commonly used in AI workflows, ready to install
+
+## Installing Tools
+
+Find the tool you need in the Recommended section and click **Install**.
+
+If a tool supports multiple installation methods (e.g., Homebrew, npm), you'll be asked to choose. The installation progress shows real-time terminal output so you can see exactly what's happening.
+
+Currently recommended tools:
+
+| Tool | Purpose | Install via |
+|------|---------|------------|
+| FFmpeg | Audio/video transcoding, trimming, merging | Homebrew |
+| jq | JSON data parsing and transformation | Homebrew |
+| ripgrep | Ultra-fast text search (much faster than grep) | Homebrew |
+| yt-dlp | Video downloading | Homebrew / pipx |
+| pandoc | Document format conversion (Markdown, Word, PDF) | Homebrew |
+
+## Viewing Tool Details
+
+Click the **Details** button on a tool card to see:
+
+- **Introduction** — What the tool does
+- **Use Cases** — Most common scenarios
+- **Setup Guide** — Steps from installation to first use
+- **Example Prompts** — Ready-to-use prompts you can copy into a conversation
+
+Example prompts are the most practical part. For FFmpeg, you might see:
+
+> "Convert input.mov to MP4 format, keeping original quality"
+
+Click the copy button or "Send to Chat" to start a conversation with that prompt immediately.
+
+## AI-Enhanced Descriptions
+
+Installed tools support AI-generated detailed descriptions. Click the **Auto Describe** button on a tool card, and Claude will generate a bilingual description based on the tool's name and capabilities.
+
+The description is saved locally and will persist across sessions.
+
+## Using Tools in Conversations
+
+### Automatic Awareness (Recommended)
+
+After installing tools, you don't need to do anything extra. CodePilot automatically detects your installed tools before each conversation and includes them in the system prompt.
+
+This means when you say:
+
+> "Convert all .mov files in this directory to .mp4"
+
+Claude knows you have FFmpeg and gives you a ready-to-run command, instead of first asking "Do you have FFmpeg installed?"
+
+### Manual Tool Selection
+
+If you want to explicitly tell Claude to use a specific tool, click the **terminal icon** in the chat input toolbar to open the CLI tool picker.
+
+After selecting a tool:
+
+- If the input is empty, it auto-fills a guide phrase like "I want to use FFmpeg to: " — just add your specific request
+- If there's already text in the input, a tool badge is attached to the message, and Claude will prioritize that tool in its response
+
+## Best Practices
+
+### Describe the Goal, Not the Command
+
+Less effective:
+> "Run ffmpeg -i input.mov -c:v libx264 output.mp4"
+
+More effective:
+> "Convert input.mov to MP4, keep the quality, minimize file size"
+
+Let Claude choose the optimal parameters. It knows FFmpeg's encoding options better than most people.
+
+### Combine Multiple Tools
+
+CLI tools work great together. For example:
+
+> "Download the video from this YouTube link, trim the first 30 seconds, and convert to GIF"
+
+If you have yt-dlp and FFmpeg installed, Claude will chain them together into a complete workflow.
+
+### Start with Example Prompts
+
+Not sure how to use a tool? Open its detail page and start with the example prompts. They cover the most common use cases and are the fastest way to get started.

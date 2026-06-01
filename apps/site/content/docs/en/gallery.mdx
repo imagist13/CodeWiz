@@ -1,0 +1,41 @@
+---
+title: Gallery
+description: Manage AI-generated image assets.
+---
+
+# Gallery
+
+The Gallery lets you browse, manage, and organize all images generated through Design Agent. Click **Gallery** in the sidebar to open it.
+
+## Browsing Images
+
+The Gallery displays all generated images in a masonry grid layout with infinite scroll loading.
+
+### Filtering and Sorting
+
+- **Date range** — Filter images by date
+- **Bookmarked only** — Show only bookmarked images
+- **Sort order** — Arrange by newest or oldest
+
+## Image Details
+
+Click any image to open the detail view. The left side shows the image preview, and the right side displays a metadata panel:
+
+- **Prompt** — The prompt used for generation
+- **Model** — The generation model used
+- **Aspect ratio** — Image ratio (e.g., 1:1, 16:9)
+- **Resolution** — Image dimensions
+- **Reference image** — The reference image used during generation (if any)
+- **Linked conversation** — Jump to the conversation where the image was generated
+
+### Actions
+
+- **Download** — Save the image locally
+- **Bookmark** — Mark as a bookmark for quick access later
+- **Delete** — Delete the image (confirmation required)
+
+When multiple images are generated together, a count badge and left/right navigation arrows are shown.
+
+## Storage Location
+
+Generated images are saved in the `~/.codepilot/.codepilot-media/` directory. If generated within a conversation, images are also copied to the `.codepilot-images/` folder in the project directory.

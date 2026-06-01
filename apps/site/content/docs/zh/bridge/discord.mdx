@@ -1,0 +1,70 @@
+---
+title: Discord
+description: 配置 Discord Bot 桥接。
+---
+
+# Discord 桥接
+
+通过 Discord Bot 与 Claude 对话。支持服务器频道和私聊两种模式，支持流式消息预览。
+
+## 创建 Discord Bot
+
+1. 前往 [Discord Developer Portal](https://discord.com/developers/applications)
+2. 点击 **New Application**，输入应用名称
+3. 在左侧菜单选择 **Bot**
+4. 点击 **Reset Token** 获取 Bot Token，复制备用
+5. 在 Bot 设置中开启以下 **Privileged Gateway Intents**：
+   - **Message Content Intent** — 必须，Bot 需要读取消息内容
+   - **Server Members Intent** — 可选，用于用户身份验证
+6. 在左侧选择 **OAuth2 > URL Generator**
+7. 勾选 Scopes：`bot`
+8. 勾选 Bot Permissions：`Send Messages`、`Read Message History`、`Embed Links`
+9. 复制生成的邀请链接，在浏览器中打开
+10. 选择你的服务器，授权 Bot 加入
+
+## 在 CodePilot 中配置
+
+1. 点击侧边栏 **桥接**，切换到 **Discord** 页面
+2. 在 **Bot 凭据** 区域粘贴 Bot Token
+3. 点击 **测试连接** 验证
+4. 配置访问控制（获取 ID 需要先开启 Discord 的**开发者模式**：打开 Discord 设置 → **高级** → 开启 **开发者模式**，之后就可以右键复制各类 ID）：
+   - **允许的用户** — 右键用户 → **复制用户 ID**，多个用逗号分隔
+   - **允许的频道** — 右键频道 → **复制频道 ID**，限制 Bot 只在特定频道响应
+   - **允许的服务器** — 右键服务器图标 → **复制服务器 ID**，限制 Bot 只在特定服务器工作
+5. 配置群组策略：
+   - **开放** — Bot 在所有允许的服务器/频道中响应
+   - **禁用** — Bot 只在私聊中响应
+6. （可选）**需要 @提及** — 开启后 Bot 只响应 @提及它的消息
+7. 点击 **保存**
+
+## 启用桥接
+
+1. 回到桥接总览页面
+2. 确保 **Discord** 渠道开关已打开
+3. 确保桥接主开关已开启
+4. 点击 **启动**
+
+## 流式预览
+
+Discord 桥接支持流式消息预览，Claude 生成回复时实时更新消息。参数：
+
+- **最小更新字符数** — 默认 40
+- **最小更新间隔** — 默认 1500ms
+- **最大消息长度** — 默认 1900 字符
+
+## 消息格式
+
+Discord 原生支持 Markdown，Claude 的回复会直接以 Markdown 格式发送。超长消息自动分片（每片最大 2000 字符）。
+
+## 故障排除
+
+### Bot 在线但不响应
+
+1. 确认 **Message Content Intent** 已开启（Developer Portal → Bot 设置）
+2. 确认 Bot 有该频道的 **发送消息** 和 **查看频道** 权限
+3. 如果设置了允许的频道/用户/服务器列表，确认对应 ID 正确
+4. 如果开启了 **需要 @提及**，确保消息中 @了 Bot
+
+### Bot 掉线
+
+Discord WebSocket 连接可能因网络波动断开。CodePilot 会自动重连。如果持续掉线，检查网络连接。

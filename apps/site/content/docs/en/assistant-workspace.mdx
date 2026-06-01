@@ -1,0 +1,62 @@
+---
+title: Assistant Workspace
+description: Manage Claude's project context, behavior settings, and automation workflows.
+---
+
+# Assistant Workspace
+
+The Assistant Workspace lets you configure project-level context and behavior for Claude. You can define Claude's role, memory, and automation workflows so it maintains a consistent working state across conversations.
+
+## Opening the Workspace
+
+Go to **Settings > Assistant** tab to manage all Assistant Workspace configurations.
+
+## Workspace Path
+
+The workspace path specifies the project directory Claude works in. Once set, Claude automatically uses that directory as context for file operations and code analysis during conversations.
+
+## Onboarding Setup
+
+Onboarding setup is a prompt that runs automatically at the start of each new conversation. When enabled, the first message of every new conversation triggers the onboarding workflow.
+
+Typical uses:
+- Have Claude read the project's README and key configuration files
+- Understand the project architecture and coding conventions
+- Load essential context information
+
+### Configuration
+
+1. Find the **Onboarding Setup** section in the **Assistant** tab
+2. Toggle the switch to enable onboarding setup
+3. Write the onboarding prompt in the text box
+4. Save
+
+## Daily Check-in
+
+Daily check-in is a periodic context-refresh prompt that runs automatically. When enabled, Claude re-evaluates the project state at the configured interval.
+
+Typical uses:
+- Periodically review project progress
+- Refresh file change status
+- Update Claude's awareness of the current project state
+
+### Configuration
+
+1. Find the **Daily Check-in** section in the **Assistant** tab
+2. Toggle the switch to enable daily check-in
+3. Write the check-in prompt
+4. Save
+
+## Use Cases
+
+### Personal Project Maintenance
+
+Configure onboarding setup for long-term projects so Claude can quickly understand the current state of the project in every conversation, without you having to re-explain the background each time.
+
+### Team Collaboration
+
+Set up a unified workspace configuration to ensure team members follow the same coding standards and workflows when using Claude.
+
+### Complex Project Management
+
+Combine onboarding setup with daily check-in to keep Claude continuously aware of the project context during long-running tasks.

@@ -1,110 +1,69 @@
-# ===================
-# Environment & Secrets
-# ===================
-.env
-.env.local
-.env.production
-.env.staging
-.env.*.local
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# ===================
-# Credentials
-# ===================
-*.pem
-*.key
-*.crt
-credentials.json
-secrets.json
-service-account-key.json
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# ===================
-# Dependencies
-# ===================
-node_modules/
-.venv/
-venv/
-env/
-ai-service/venv/
+# testing
+/coverage
 
-# ===================
-# Python
-# ===================
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.eggs/
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.mypy_cache/
-.ruff_cache/
+# next.js
+/.next/
+/out/
 
-# ===================
-# Build outputs
-# ===================
-dist/
-build/
-release/
-*.exe
-*.dll
-*.so
-*.dylib
+# production
+/build-next
 
-# ===================
-# Electron / Vite
-# ===================
-.electron-vite/
-.vite/
-
-# ===================
-# IDE
-# ===================
-.idea/
-.vscode/
-*.swp
-*.swo
+# misc
 .DS_Store
-Thumbs.db
-*.log
+*.pem
 
-# ===================
-# Logs & Temp files
-# ===================
-logs/
-*.log
-*.tmp
-*.temp
-tmp/
-temp/
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# ===================
-# User data (local runtime data)
-# ===================
-data/
-*.db
-*.db-journal
-*.sqlite
-*.sqlite3
+# env files (can opt-in for committing if needed)
+.env*
 
-# ===================
-# Backend
-# ===================
-backend/vendor/
-backend/tmp/
-backend/*.pyc
-backend/__pycache__/
+# vercel
+.vercel
 
-# ===================
-# Node (pnpm)
-# ===================
-.pnpm-store/
-.pnpm/
+# local database
+/data/
 
-# ===================
-# Misc
-# ===================
-certbot/
-*.bak
-*.swp
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# electron
+/dist-electron/
+/release/
+
+# test artifacts
+/playwright-report/
+/test-results/
+# Playwright visual regression snapshots are machine-specific (suffix is
+# darwin/linux/etc) and regenerate on demand — don't commit them.
+src/__tests__/e2e/*-snapshots/
+
+# user uploads (runtime data)
+.codepilot-uploads/
+
+# local runtime artifacts
+.codepilot/
+
+# monorepo: site app build artifacts
+apps/site/.next/
+apps/site/.source/
+apps/site/node_modules/
+
+# claude code session data
+.claude/

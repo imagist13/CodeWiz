@@ -1,0 +1,21 @@
+{
+  "title": "文档",
+  "pages": [
+    "index",
+    "installation",
+    "---指南---",
+    "chat",
+    "generative-ui",
+    "git-and-workspace",
+    "providers",
+    "mcp",
+    "skills",
+    "cli-tools",
+    "bridge",
+    "assistant-workspace",
+    "design-agent",
+    "gallery",
+    "---帮助---",
+    "faq"
+  ]
+}

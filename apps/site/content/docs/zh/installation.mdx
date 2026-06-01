@@ -1,0 +1,122 @@
+---
+title: 安装指南
+description: 如何在你的系统上安装和配置 CodePilot。
+---
+
+## 系统要求
+
+- **macOS** 12+（Apple Silicon 或 Intel）
+- **Windows** 10+（64 位）
+- **Node.js** 18 或更高版本
+- **Claude Code CLI**（如未安装会自动安装）
+
+## 下载
+
+<DownloadButton label="下载最新版本" />
+
+从 [GitHub Releases](https://github.com/op7418/CodePilot/releases) 下载适合你平台的最新版本。
+
+| 平台 | 格式 | 架构 |
+|------|------|------|
+| macOS | DMG | arm64 (Apple Silicon) + x64 (Intel) |
+| Windows | NSIS 安装包 | x64 |
+
+## 安装步骤
+
+### macOS
+
+1. 下载对应架构的 `.dmg` 文件
+2. 打开 DMG，将 CodePilot 拖到应用程序文件夹
+3. 从应用程序中启动 CodePilot
+4. 首次启动时，macOS 可能会提示确认打开来自未识别开发者的应用 — 前往**系统设置 > 隐私与安全性**，点击"仍要打开"
+
+### Windows
+
+1. 下载 `.exe` 安装程序
+2. 运行安装程序并按提示操作
+3. CodePilot 将出现在开始菜单中
+
+## 首次启动与设置中心
+
+首次启动时，CodePilot 会自动打开**设置中心** — 一个引导式设置面板，帮你完成三项前置配置：
+
+### 1. Claude Code CLI 检测
+
+设置中心会检查 Claude Code CLI 是否已安装并可访问。
+
+- **已检测到** — 显示版本号、安装类型（native/npm/bun/homebrew）和二进制路径，可以直接使用。
+- **未找到** — 提供对应平台的安装命令：
+  - macOS/Linux：`curl -fsSL https://claude.ai/install.sh | bash`
+  - Windows：`irm https://claude.ai/install.ps1 | iex`
+  - 安装完成后点击**重新检测**验证。
+- **检测到多个安装版本** — 如果系统中存在多个 Claude Code 二进制文件（如 npm 安装和原生安装并存），会显示警告及清理指引。详见下方 [Claude Code 冲突处理](#claude-code-冲突处理)。
+- **未找到 Git（Windows）** — Claude Code 依赖 Git。设置中心会提供 Git for Windows 的安装步骤。
+
+每一步都可以**跳过** — 只要 CLI 在 PATH 中可用，应用就能正常工作。
+
+### 2. API 服务商配置
+
+设置中心会从三个位置检查可用的 API 凭据：
+
+1. **数据库服务商** — 在设置中手动配置的服务商
+2. **环境变量** — shell 中设置的 `ANTHROPIC_API_KEY` 或 `ANTHROPIC_AUTH_TOKEN`
+3. **应用设置** — 旧版本遗留的 `anthropic_auth_token`
+
+如果检测到凭据，卡片会自动标记为已完成。否则你可以点击**添加服务商**跳转到设置页，或点击**跳过**稍后配置。
+
+> **注意：** 跳过服务商配置不代表你已经有可用的服务商。如果在没有配置服务商的情况下尝试发送消息，CodePilot 会提示你先完成配置。
+
+### 3. 默认项目目录
+
+选择新会话的默认工作目录。设置中心会显示你的最近项目（如果有）作为快速选择，也可以浏览文件夹手动选择。
+
+该目录在创建新会话时作为默认值。你随时可以在对话中切换。
+
+### 重新打开设置中心
+
+可以随时从 **设置 > 通用 > 首次设置引导** 重新打开设置中心。
+
+## Claude Code 冲突处理
+
+如果系统中存在多个 Claude Code 安装，可能会导致版本冲突、异常行为或权限错误。常见场景：
+
+- 通过 `npm install -g` 和原生安装器分别安装过
+- 切换到原生安装后遗留了旧的 npm 安装
+- 使用了多个包管理器（npm + homebrew、npm + bun）
+
+### CodePilot 如何检测冲突
+
+设置中心（或连接状态指示器）检测到 Claude Code 时，也会扫描是否存在其他安装。如果发现多个，会显示：
+
+1. **当前使用的二进制** — 路径、版本号和安装类型
+2. **其他发现的安装** — 各自的路径和类型
+3. **卸载命令** — 根据安装类型给出：
+
+| 安装类型 | 卸载命令 |
+|----------|----------|
+| npm | `npm uninstall -g @anthropic-ai/claude-code` |
+| Bun | `bun remove -g @anthropic-ai/claude-code` |
+| Homebrew | `brew uninstall --cask claude-code` |
+| 原生安装 | 删除显示路径下的二进制文件 |
+
+清理完成后点击**重新检测**，确认只剩一个安装。
+
+### 推荐安装方式
+
+推荐使用**原生安装器**（`curl -fsSL https://claude.ai/install.sh | bash`）。它不依赖 PATH 中的 Node.js/npm，避免与其他 npm 包的版本冲突，且更新速度最快。
+
+## 配置 API 服务商
+
+CodePilot 至少需要一个 API 服务商才能工作。前往 **设置 > 服务商** 添加：
+
+- **Anthropic** — 直接访问 Claude 模型
+- **Custom API (OpenAI 兼容)** — 任何 OpenAI 兼容端点，包括本地 LLM
+- **OpenRouter** — 通过 OpenRouter 访问多个模型
+- **AWS Bedrock** — 通过 AWS 使用 Claude
+- **Google Vertex** — 通过 Google Cloud 使用 Claude/Gemini
+
+输入 API 密钥并选择默认模型。你可以配置多个服务商并随时切换。
+
+## 更新
+
+CodePilot 内置自动更新功能。有新版本可用时，你会在应用中看到通知。也可以在 **设置** 的 **通用** 部分手动检查更新。

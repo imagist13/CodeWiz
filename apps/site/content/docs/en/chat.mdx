@@ -1,0 +1,104 @@
+---
+title: Chat
+description: CodePilot's chat features — modes, permissions, and context management.
+---
+
+# Chat
+
+Chat is CodePilot's core feature. This is where you collaborate with Claude on programming tasks.
+
+## Conversation Modes
+
+CodePilot offers three conversation modes, switchable at any time from above the input box:
+
+### Code Mode
+
+The default mode. Claude has full tool access and can:
+
+- Read and write project files
+- Execute terminal commands
+- Call MCP tools
+- Search the codebase
+
+Best for everyday development tasks: writing code, fixing bugs, refactoring, deploying.
+
+### Plan Mode
+
+Planning mode. Claude only analyzes and formulates plans — **it will not execute any actions**.
+
+- Analyzes problems and proposes implementation plans
+- Lists files and steps that need to be changed
+- Evaluates the pros and cons of different approaches
+
+Best for thinking things through before taking action, or assessing the impact of large changes.
+
+### Ask Mode
+
+Q&A mode. Claude only answers questions and does not use any tools.
+
+- Explains code logic
+- Answers technical questions
+- Discusses architecture and design
+
+Best for pure knowledge Q&A scenarios where Claude does not need access to project files.
+
+## Permission Control
+
+### Session Permissions
+
+Each conversation lets you choose a permission level:
+
+- **Default** — Claude will ask for confirmation before performing sensitive operations (writing files, running commands)
+- **Full Access** — Claude can automatically perform all operations without individual confirmation
+
+The permission selector is next to the chat input box. Use Default for exploratory tasks; use Full Access for trusted, repetitive tasks.
+
+### Permission Dialog
+
+When Claude needs to perform a restricted operation, a permission confirmation dialog appears showing:
+
+- Tool name and parameters
+- Description of the operation
+- Allow / Deny buttons
+
+You can review each of Claude's actions one by one.
+
+## Context Management
+
+### Context Usage Indicator
+
+The circular progress bar next to the input box shows the current conversation's context window usage. Hover over it for details:
+
+- Tokens used
+- Total available tokens
+- Usage percentage
+
+When the context approaches its limit, Claude will automatically compress message history to continue the conversation.
+
+### Conversation Rewind
+
+CodePilot supports rewinding a conversation to a previous point. Each user message is a rewind point — you can go back to any earlier message and restart the conversation from there.
+
+## Input Features
+
+### File Attachments
+
+You can attach image files in the input box for Claude to analyze screenshots or design mockups. Supports drag-and-drop or clicking the attachment button.
+
+### Slash Commands
+
+Type `/` to trigger the slash command menu for quick access to common actions.
+
+### @-Mentions
+
+Type `@` to reference files or context, helping Claude focus on specific content.
+
+## Session Management
+
+### Import CLI Sessions
+
+If you have previously used the Claude Code CLI, you can use the **Import Session** feature to bring CLI conversations into CodePilot. Supports searching and filtering past sessions.
+
+### Provider Switching
+
+The conversation header shows the current provider. You can switch providers mid-conversation — subsequent messages will be processed by the new provider. Each conversation remembers its provider setting.

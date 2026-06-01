@@ -1,0 +1,76 @@
+---
+title: QQ
+description: Configure the QQ Bot bridge.
+---
+
+# QQ Bridge
+
+Chat with Claude through a QQ Bot. Supports image sending and DM bridging.
+
+## Create a QQ Bot
+
+1. Go to the [QQ Open Platform](https://q.qq.com) and register a developer account
+2. Create a new Bot application
+3. Complete identity verification (individual or enterprise)
+4. On the application management page, obtain:
+   - **AppID** (numeric format)
+   - **App Secret**
+5. Under **Feature Configuration**, enable the required message permissions
+6. Submit for review and wait for approval
+
+> The QQ Bot platform has a strict review process. It is recommended to read the platform documentation and integration guidelines carefully.
+
+## Configure in CodePilot
+
+1. Click **Bridge** in the sidebar, then switch to the **QQ** tab
+2. Enter the **App ID** and **App Secret**
+3. Click **Test Connection** to verify the credentials
+4. (Optional) Configure **Allowed Users** — Enter QQ user_openid values, separated by commas
+5. (Optional) Configure image settings:
+   - **Enable image sending** — Allow the Bot to send images (enabled by default)
+   - **Maximum image size** — Size limit per image (default 20 MB)
+6. Click **Save**
+
+## Enable the Bridge
+
+1. Go back to the Bridge overview page
+2. Make sure the **QQ** channel toggle is on
+3. Make sure the Bridge master switch is on
+4. Click **Start**
+5. Add the Bot as a friend in QQ, then send a message to start chatting with Claude
+
+## Message Format
+
+The QQ bridge sends messages in plain text format:
+
+- Markdown rendering is not supported
+- Overly long messages are automatically split into chunks (max 2000 characters each)
+- Each reply can contain at most 3 chunks (platform limitation)
+- Image sending is supported (must be enabled in image settings)
+
+## Permission Handling
+
+The QQ Bot platform does not support inline buttons, so permission confirmations are handled via text commands:
+
+- The Bot sends a permission confirmation message including the operation description and a permission ID
+- Reply `/perm allow <ID>` to allow the operation
+- Reply `/perm deny <ID>` to deny the operation
+- Reply `/perm allow_session <ID>` to allow similar operations for the rest of this session
+
+## Troubleshooting
+
+### Test connection failed
+
+1. Confirm the App ID and App Secret are correct
+2. Confirm the Bot application has passed review
+3. Confirm developer identity verification is complete
+
+### Bot not responding
+
+1. Confirm you have added the Bot as a QQ friend
+2. Confirm the CodePilot bridge is running
+3. If you configured an allowed users list, confirm your user_openid is in the list
+
+### Messages are truncated
+
+The QQ platform limits each reply to a maximum of 3 chunks. For particularly long replies, the end may be lost. Consider asking Claude to reply concisely in your prompts.

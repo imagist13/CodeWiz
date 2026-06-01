@@ -1,0 +1,475 @@
+name: Build & Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Target platform"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - windows
+          - macos
+          - linux
+  pull_request:
+    branches: [main]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+  smoke-test:
+    needs: [lint-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: npm run test:smoke
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  build-windows:
+    needs: [lint-test, smoke-test]
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'windows' }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron app
+        run: npm run electron:build
+
+      - name: Package for Windows
+        run: npx electron-builder --win --config electron-builder.yml --publish never
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          cd release
+          Get-ChildItem *.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -Append checksums-windows.sha256 -Encoding utf8
+          }
+          Get-Content checksums-windows.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-windows
+          path: |
+            release/*.exe
+            release/checksums-windows.sha256
+          retention-days: 3
+
+  build-macos:
+    needs: [lint-test, smoke-test]
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'macos' }}
+    runs-on: macos-latest
+    env:
+      HAS_CERT: ${{ secrets.MAC_CERT_P12_BASE64 != '' && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron app
+        run: npm run electron:build
+
+      - name: Decode signing certificate
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          if [ "${HAS_CERT}" != "true" ]; then
+            echo "::error::Missing signing certificate (MAC_CERT_P12_BASE64 secret not set)"
+            exit 1
+          fi
+          printf '%s' "$MAC_CERT_P12_BASE64" | tr -d '\r\n' | base64 --decode > /tmp/cert.p12
+          openssl pkcs12 -in /tmp/cert.p12 -passin pass:"$MAC_CERT_PASSWORD" -noout
+          echo "Certificate decoded and validated"
+
+      - name: Package for macOS (x64 + arm64, sign only)
+        timeout-minutes: 15
+        env:
+          CSC_LINK: /tmp/cert.p12
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: npx electron-builder --mac --config electron-builder.yml --publish never
+
+      - name: Verify code signature
+        run: |
+          APPS=$(find release -name "CodePilot.app" -maxdepth 3)
+          if [ -z "$APPS" ]; then
+            echo "::error::No CodePilot.app found after build"
+            exit 1
+          fi
+
+          FAILED=0
+          while IFS= read -r APP_PATH; do
+            echo "========== Verifying: $APP_PATH =========="
+            codesign -dv --verbose=4 "$APP_PATH" 2>&1 | tee /tmp/codesign-info.txt || true
+
+            if ! grep -q 'Authority=Developer ID Application' /tmp/codesign-info.txt; then
+              echo "::error::$APP_PATH is NOT signed with Developer ID Application"
+              FAILED=1
+              continue
+            fi
+
+            if ! grep -q 'TeamIdentifier=K9X599X9Q2' /tmp/codesign-info.txt; then
+              echo "::error::$APP_PATH has unexpected TeamIdentifier"
+              FAILED=1
+              continue
+            fi
+
+            codesign --verify --deep --strict --verbose=4 "$APP_PATH"
+            echo "✓ $APP_PATH passed all checks"
+          done <<< "$APPS"
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::One or more .app bundles failed signature verification"
+            exit 1
+          fi
+
+      - name: Generate checksums
+        run: |
+          cd release
+          shasum -a 256 *.dmg *.zip 2>/dev/null | tee checksums-macos.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-macos
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/checksums-macos.sha256
+          retention-days: 3
+
+  build-linux-x64:
+    needs: [lint-test, smoke-test]
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'linux' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron app
+        run: npm run electron:build
+
+      - name: Package for Linux (x64)
+        run: npx electron-builder --linux --x64 --config electron-builder.yml --publish never
+
+      - name: Verify Linux x64 artifacts
+        run: |
+          echo "=== Artifact list ==="
+          find release -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) | sort
+
+          COUNT=$(find release -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) | wc -l)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::No Linux x64 artifacts produced"
+            exit 1
+          fi
+
+          # Verify AppImage ELF architecture
+          for f in release/*.AppImage; do
+            [ -f "$f" ] || continue
+            FILE_INFO=$(file "$f")
+            echo "$FILE_INFO"
+            if ! echo "$FILE_INFO" | grep -qi "x86-64\|x86_64"; then
+              echo "::error::AppImage $f is not x64"
+              exit 1
+            fi
+          done
+
+          # Verify deb architecture
+          for f in release/*.deb; do
+            [ -f "$f" ] || continue
+            DEB_ARCH=$(dpkg-deb --info "$f" 2>/dev/null | grep '^ Architecture:' | awk '{print $2}')
+            echo "deb $f arch=$DEB_ARCH"
+            if [ "$DEB_ARCH" != "amd64" ]; then
+              echo "::error::deb $f has wrong architecture: $DEB_ARCH (expected amd64)"
+              exit 1
+            fi
+          done
+
+          # Verify rpm architecture
+          for f in release/*.rpm; do
+            [ -f "$f" ] || continue
+            RPM_ARCH=$(rpm -qp --qf '%{ARCH}' "$f" 2>/dev/null || echo "unknown")
+            echo "rpm $f arch=$RPM_ARCH"
+            if [ "$RPM_ARCH" != "x86_64" ]; then
+              echo "::error::rpm $f has wrong architecture: $RPM_ARCH (expected x86_64)"
+              exit 1
+            fi
+          done
+
+          echo "✓ All Linux x64 artifacts verified"
+
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum *.AppImage *.deb *.rpm 2>/dev/null | tee checksums-linux-x64.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-linux-x64
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/checksums-linux-x64.sha256
+          retention-days: 3
+
+  build-linux-arm64:
+    needs: [lint-test, smoke-test]
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'linux' }}
+    # Use a native arm64 runner — avoids fragile cross-compilation toolchain
+    # setup that breaks across Ubuntu versions (sources.list vs deb822).
+    # Falls back gracefully: if the runner label isn't available, the job
+    # stays queued and doesn't block the x64 build or other platforms.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron app
+        run: npm run electron:build
+
+      - name: Package for Linux (arm64)
+        run: npx electron-builder --linux --arm64 --config electron-builder.yml --publish never
+
+      - name: Verify Linux arm64 artifacts
+        run: |
+          echo "=== Artifact list ==="
+          find release -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) | sort
+
+          COUNT=$(find release -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) | wc -l)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::No Linux arm64 artifacts produced"
+            exit 1
+          fi
+
+          # Verify AppImage ELF architecture
+          for f in release/*.AppImage; do
+            [ -f "$f" ] || continue
+            FILE_INFO=$(file "$f")
+            echo "$FILE_INFO"
+            if ! echo "$FILE_INFO" | grep -qi "aarch64\|ARM aarch64"; then
+              echo "::error::AppImage $f is not arm64"
+              exit 1
+            fi
+          done
+
+          # Verify deb architecture
+          for f in release/*.deb; do
+            [ -f "$f" ] || continue
+            DEB_ARCH=$(dpkg-deb --info "$f" 2>/dev/null | grep '^ Architecture:' | awk '{print $2}')
+            echo "deb $f arch=$DEB_ARCH"
+            if [ "$DEB_ARCH" != "arm64" ]; then
+              echo "::error::deb $f has wrong architecture: $DEB_ARCH (expected arm64)"
+              exit 1
+            fi
+          done
+
+          # Verify rpm architecture
+          for f in release/*.rpm; do
+            [ -f "$f" ] || continue
+            RPM_ARCH=$(rpm -qp --qf '%{ARCH}' "$f" 2>/dev/null || echo "unknown")
+            echo "rpm $f arch=$RPM_ARCH"
+            if [ "$RPM_ARCH" != "aarch64" ]; then
+              echo "::error::rpm $f has wrong architecture: $RPM_ARCH (expected aarch64)"
+              exit 1
+            fi
+          done
+
+          echo "✓ All Linux arm64 artifacts verified"
+
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum *.AppImage *.deb *.rpm 2>/dev/null | tee checksums-linux-arm64.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-linux-arm64
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/checksums-linux-arm64.sha256
+          retention-days: 3
+
+  release:
+    if: ${{ always() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(needs.*.result, 'cancelled') }}
+    needs: [build-windows, build-macos, build-linux-x64, build-linux-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      - name: Get version and previous tag
+        id: meta
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          PREV_TAG=$(git tag --sort=-creatordate | grep '^v' | sed -n '2p' || echo "")
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG="${{ steps.meta.outputs.prev_tag }}"
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            git log "$RANGE" --pretty=format:'| `%h` | %s |'
+            echo ""
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release and upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          # Use RELEASE_NOTES.md from repo if present; otherwise generate a minimal fallback
+          if [ -f "RELEASE_NOTES.md" ]; then
+            echo "Using RELEASE_NOTES.md from repository"
+            cp RELEASE_NOTES.md release-notes.md
+          else
+            echo "RELEASE_NOTES.md not found, generating default notes"
+            cat > release-notes.md << NOTES_EOF
+          ## CodePilot v${VERSION}
+
+          ## 下载地址
+
+          ### macOS
+          - [Apple Silicon (M1/M2/M3/M4)](https://github.com/op7418/CodePilot/releases/download/v${VERSION}/CodePilot-${VERSION}-arm64.dmg)
+          - [Intel](https://github.com/op7418/CodePilot/releases/download/v${VERSION}/CodePilot-${VERSION}-x64.dmg)
+
+          ### Windows
+          - [Windows 安装包](https://github.com/op7418/CodePilot/releases/download/v${VERSION}/CodePilot.Setup.${VERSION}.exe)
+
+          ## 安装说明
+
+          **macOS**: 下载 DMG → 拖入 Applications → 首次启动如遇安全提示，在系统设置 > 隐私与安全中点击"仍要打开"
+          **Windows**: 下载 exe 安装包 → 双击安装
+
+          ## 系统要求
+
+          - macOS 12.0+ / Windows 10+ / Linux (glibc 2.31+)
+          - 需要配置 API 服务商（Anthropic / OpenRouter 等）
+          - 推荐安装 Claude Code CLI 以获得完整功能
+          NOTES_EOF
+          fi
+
+          # Merge per-platform checksums into a single file
+          echo "## SHA-256 Checksums" > artifacts/SHA256SUMS.txt
+          echo "" >> artifacts/SHA256SUMS.txt
+          for cs in artifacts/checksums-*.sha256; do
+            [ -f "$cs" ] || continue
+            cat "$cs" >> artifacts/SHA256SUMS.txt
+          done
+          echo "=== Combined checksums ==="
+          cat artifacts/SHA256SUMS.txt
+
+          # Collect release files: installers + checksum file (no blockmap / update metadata)
+          FILES=()
+          while IFS= read -r f; do
+            FILES+=("$f")
+          done < <(find artifacts -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) | sort)
+          FILES+=("artifacts/SHA256SUMS.txt")
+
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "CodePilot v${VERSION}" \
+            --notes-file release-notes.md \
+            --latest \
+            "${FILES[@]}"

@@ -1,0 +1,10 @@
+{
+  "title": "消息桥接",
+  "pages": [
+    "index",
+    "telegram",
+    "discord",
+    "feishu",
+    "qq"
+  ]
+}

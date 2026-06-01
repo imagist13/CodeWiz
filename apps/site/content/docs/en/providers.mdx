@@ -1,0 +1,203 @@
+---
+title: Provider Configuration
+description: Configure LLM providers to power CodePilot.
+---
+
+# Provider Configuration
+
+CodePilot supports multiple LLM providers. You can configure several providers simultaneously and use different models in different conversations.
+
+## Authentication Overview
+
+CodePilot has two ways to obtain API credentials:
+
+### 1. CLI Environment Authentication (Auto-Detected)
+
+If you have the `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` environment variable set in your shell, CodePilot **automatically detects** it on startup and uses it as a built-in provider. The Setup Center also checks for these credentials and marks the provider step as complete if found.
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+> **Note:** Configurations changed via `claude config set` or Claude Code's `/config` command are **not recognized by CodePilot**. CodePilot only reads shell environment variables and does not share Claude Code CLI's internal configuration. If you switched accounts/keys in the CLI via `cc switch` or similar methods, you need to manually reconfigure the corresponding key in CodePilot's **Settings > Providers**.
+
+> After modifying environment variables, you need to **restart CodePilot** for changes to take effect.
+
+### 2. Manually Adding Providers
+
+Manually add API keys in **Settings > Providers**. These credentials are stored in CodePilot's local database, independent of the CLI environment.
+
+This is ideal for scenarios where you need multiple providers or non-Anthropic services.
+
+### Priority
+
+When sending a message, CodePilot determines which provider to use in the following order:
+
+1. **Conversation-specific** — The provider manually selected in the conversation header
+2. **Global default** — The provider marked as "Default" in the provider list
+3. **Environment variable** — If no providers are configured, falls back to credentials from the shell environment
+
+## Supported Providers
+
+### Anthropic (Official)
+
+Direct connection to the Anthropic API, using Claude models (Opus, Sonnet, Haiku).
+
+- **Auth**: API Key
+- **Note**: If you only use Anthropic, CLI environment authentication is sufficient — no need to add manually
+
+### Anthropic (Third-Party Compatible)
+
+Connect to third-party endpoints compatible with the Anthropic API format.
+
+- **Auth**: API Key or Auth Token + custom Base URL. When adding, you need to select the authentication type:
+  - **API Key** — The key provided by the service starts with `sk-`, or the documentation explicitly labels it as an API Key. Most providers use this method, corresponding to the `ANTHROPIC_API_KEY` environment variable
+  - **Auth Token** — The service provides an OAuth Token or other form of access token, typically not starting with `sk-`. Some subscription-based services (such as Kimi Coding Plan, 火山引擎 Ark) use this method, corresponding to the `ANTHROPIC_AUTH_TOKEN` environment variable
+  - If unsure, try API Key first; if authentication fails, switch to Auth Token
+- **Model Mapping**: Some third-party providers require their own model names (rather than Anthropic's original model names). If you encounter a model unavailable error, click **More Options** at the bottom of the configuration form and enter the provider's required model identifier in the **Model Name** field
+
+### Chinese Providers
+
+CodePilot includes built-in configuration presets for major Chinese providers. After selecting one, the Base URL and default model are auto-filled:
+
+| Provider | Description | Billing Model |
+|----------|-------------|---------------|
+| **智谱 GLM (Domestic/International)** | Zhipu AI GLM series | Coding Plan (credit-based) |
+| **Kimi Coding Plan** | Moonshot Kimi coding edition | Pay-as-you-go |
+| **Moonshot** | Moonshot API | Pay-as-you-go |
+| **MiniMax (Domestic/International)** | MiniMax M2.7 | Token Plan |
+| **DeepSeek** | DeepSeek V4 Pro / V4 Flash (Anthropic-compatible endpoint) | Pay-as-you-go |
+| **火山引擎 Ark** | ByteDance Volcengine (Doubao, GLM, DeepSeek, Kimi) | Coding Plan |
+| **小米 MiMo** | Xiaomi MiMo-V2.5-Pro (pay-as-you-go or Token Plan) | Pay-as-you-go / Token Plan |
+| **阿里云百炼 Coding Plan** | Alibaba Cloud (Qwen, GLM, Kimi, MiniMax) | Coding Plan |
+
+When adding a Chinese provider in CodePilot, the system automatically handles the authentication method — you just need to enter the key provided by the respective platform. Each provider card shows a direct link to obtain your API key.
+
+> **Important notes for specific providers:**
+> - **智谱 GLM**: Peak hours (14:00–18:00 UTC+8) consume 3x credits
+> - **Kimi / Moonshot**: `tool_search` is automatically disabled to prevent 400 errors
+> - **小米 MiMo**: Does not support Thinking mode
+> - **阿里云百炼**: Must use Coding Plan key (starts with `sk-sp-`); standard DashScope keys will not work
+> - **火山引擎 Ark**: Endpoint must be activated in the console before use
+
+### OpenRouter
+
+Access multiple model providers (Anthropic, OpenAI, Google, Meta, etc.) through OpenRouter's unified interface.
+
+- **Auth**: API Key
+- **Advantage**: One key to access multiple models, with automatic routing and failover
+
+### AWS Bedrock
+
+Use Claude through AWS infrastructure.
+
+- **Auth**: Environment variables — requires `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
+- **Note**: After adding in CodePilot, the system reads your AWS environment variables for authentication. No need to enter keys in the UI.
+
+### Google Vertex
+
+Use Claude and Gemini through Google Cloud.
+
+- **Auth**: Environment variables — requires Google Cloud service account credentials
+- **Note**: Similar to Bedrock, authenticates via environment variables
+
+### Google Gemini (Image)
+
+Gemini image generation API, used by the design Agent.
+
+- **Auth**: API Key
+- **Note**: This is a provider specifically for image generation, not for text conversations
+
+### Ollama (Local Models)
+
+Run local models through Ollama. Ollama provides an Anthropic-compatible API that CodePilot can connect to directly.
+
+- **Auth**: No API key needed (handled automatically)
+- **Prerequisite**: Ollama must be installed and running
+- **Setup**: See [Ollama Setup Guide](#ollama-setup-guide) below
+
+### LiteLLM
+
+Unified proxy supporting 100+ LLM providers.
+
+- **Auth**: API Key + Base URL
+
+## Adding a Provider
+
+1. Open **Settings > Providers**
+2. Click **Add Provider**
+3. Select the provider type (or a Chinese provider preset)
+4. Enter credentials:
+   - **API Key type**: Paste the key
+   - **Custom endpoint**: Also enter the Base URL
+   - **Environment variable type** (Bedrock / Vertex): Ensure environment variables are set
+5. Select a default model
+6. Click **Save**
+
+## Switching Providers
+
+- Select from the provider picker in the conversation header
+- Each conversation remembers the provider used
+- You can switch mid-conversation; subsequent messages will use the new provider
+- Click **Set as Default** in the provider list to set the global default
+
+## FAQ
+
+### Environment variables are set but CodePilot doesn't detect them
+
+- Confirm the environment variables are available in the shell environment when CodePilot starts
+- If set via `.zshrc` / `.bashrc`, make sure you **restarted CodePilot** (not just refreshed) after the change
+- Apps launched via macOS Launchpad may not inherit terminal environment variables — try launching from the terminal or manually adding the provider
+
+### API key is valid but requests fail
+
+- Check if the account has sufficient balance
+- Check if the key has model access permissions
+- For Chinese providers, check if the corresponding API endpoint is reachable from your network
+- For AWS Bedrock, check if IAM permissions include `bedrock:InvokeModel`
+
+### Conversation issues after switching providers
+
+- Different providers have different context window sizes; switching may cause errors if the context is too long
+- Some providers do not support all Claude Code features (such as tool use); certain operations may be unavailable after switching
+
+### How to use local models
+
+The recommended way is to use the **Ollama** preset — see the [Ollama Setup Guide](#ollama-setup-guide) below. You can also use **LiteLLM** to connect other local inference frameworks (vLLM, LM Studio, etc.).
+
+---
+
+## Ollama Setup Guide
+
+Ollama lets you run open-source models locally — no API key required, completely free. This guide walks through the full setup using `gemma4:e4b` as an example.
+
+### Step 1: Install Ollama and Run a Model
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull and run a model (this also starts the Ollama service)
+ollama run gemma4:e4b
+```
+
+The model will enter interactive chat mode. Once you confirm it responds normally, press `Ctrl+D` to exit. The Ollama service continues running in the background.
+
+> **Model names matter**: The model name you enter in CodePilot must **exactly match** the name shown by `ollama list` (including the tag after the colon). For example, `gemma4:e4b` — not just `gemma4`.
+
+For more models and usage, see the [Ollama documentation](https://docs.ollama.com/).
+
+### Step 2: Add Ollama in CodePilot
+
+1. Open **Settings > Providers**
+2. Find **Ollama** at the bottom of the provider list and click **+ Connect**
+3. Configure:
+   - **Base URL**: Keep the default `http://localhost:11434` (change if Ollama runs on a different port or remote machine)
+   - **Model Name**: Enter `gemma4:e4b` (must exactly match the name from `ollama list`)
+4. Click **Save**
+
+### Step 3: Start Chatting
+
+1. Create a new conversation
+2. Switch to **Ollama** in the provider selector at the top of the conversation
+3. Send a message — the model runs inference locally

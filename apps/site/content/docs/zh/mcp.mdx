@@ -1,0 +1,73 @@
+---
+title: MCP 插件
+description: 通过 Model Context Protocol 为 Claude 接入外部工具。
+---
+
+# MCP 插件
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io) 是连接 AI 助手与外部工具的开放标准。CodePilot 内置 MCP 客户端，支持连接任意 MCP 服务器来扩展 Claude 的能力。
+
+## 什么是 MCP？
+
+MCP 服务器为 Claude 提供额外的工具，例如：
+
+- **文件系统** — 读写文件、搜索目录
+- **数据库** — 直接查询数据库
+- **API 集成** — 连接 GitHub、Jira、Slack 等外部服务
+- **开发工具** — 运行测试、代码检查、依赖管理
+- **自定义工具** — 构建任何你需要的工具
+
+## 管理 MCP 服务器
+
+从侧边栏点击 **MCP** 进入管理页面。页面提供两种视图：
+
+### 列表视图
+
+以卡片形式展示所有已配置的 MCP 服务器，每个卡片显示：
+
+- 服务器名称
+- 运行状态（已连接 / 已断开 / 错误）
+- 提供的工具列表
+
+### JSON 编辑器
+
+直接编辑 MCP 配置的 JSON 文件，适合批量配置或从其他工具导入配置。
+
+## 添加 MCP 服务器
+
+1. 在 MCP 页面点击 **添加服务器**
+2. 填写配置：
+   - **名称** — 服务器的描述性名称
+   - **传输类型** — 选择连接方式：
+     - **stdio** — 本地进程，通过标准输入输出通信（最常用）
+     - **SSE** — 通过 Server-Sent Events 连接远程服务器
+     - **HTTP (Streamable)** — 通过 HTTP 流式连接
+   - **命令**（stdio 类型）— 启动服务器的命令，如 `npx @modelcontextprotocol/server-filesystem`
+   - **参数** — 命令行参数
+   - **URL**（SSE / HTTP 类型）— 远程服务器的地址
+   - **环境变量** — 服务器需要的环境变量（API 密钥等）
+3. 保存后服务器会自动启动
+
+## 使用 MCP 工具
+
+MCP 服务器连接后，它提供的工具会自动对 Claude 可用。Claude 在处理你的请求时会根据需要调用这些工具。
+
+你可以在 MCP 页面查看每个服务器提供的具体工具列表。
+
+## 常用 MCP 服务器
+
+| 服务器 | 用途 |
+|--------|------|
+| `@modelcontextprotocol/server-filesystem` | 文件系统访问 |
+| `@modelcontextprotocol/server-github` | GitHub 集成 |
+| `@modelcontextprotocol/server-slack` | Slack 集成 |
+| `@anthropic-ai/mcp-server-fetch` | 网页抓取 |
+
+更多 MCP 服务器可在 [MCP 官方仓库](https://github.com/modelcontextprotocol/servers) 和社区中找到。
+
+## 故障排除
+
+- **服务器无法连接** — 检查命令是否正确，所需的 npm 包是否已安装
+- **工具未出现** — 尝试断开并重新连接服务器
+- **权限错误** — 确保 MCP 服务器有权访问所需资源
+- **SSE/HTTP 连接失败** — 检查 URL 是否正确，服务器是否正在运行
