@@ -1,0 +1,16 @@
+{
+  "max_history": 20,
+  "max_token_budget": 128000,
+  "token_limit_ratio": 0.85,
+  "token_limit_ratio_cjk": 0.65,
+  "max_tool_calls_per_turn": 20,
+  "tool_timeout_default": 60,
+  "tool_timeout_shell": 120,
+  "tool_timeout_long": 300,
+  "auto_improve_time": 3600,
+  "forget_time": 604800,
+  "summary_trigger_messages": 40,
+  "summary_max_history": 10,
+  "tool_call_max_failures": 3,
+  "log_max_lines": 5000
+}

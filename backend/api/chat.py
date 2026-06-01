@@ -1,132 +1,115 @@
-"""聊天 SSE 流式端点"""
+"""Chat API with SSE streaming and context compression."""
+from __future__ import annotations
 
-import json
-import uuid
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from sse_starlette.sse import EventSourceResponse
 import asyncio
+import json
+import logging
+import uuid
+from typing import Optional
 
-from engine import ChatManager, ToolRunner, run_chat_turn
-from provider import create_provider
-from skills import get_cached_skills_info
-from models.event import PipelineEventType
-from config import get_storage_path
-from orchestrator.state import PipelineStateManager
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from sse_starlette.sse import EventSourceResponse
 
+from runcore.agent import StreamingAgentEngine
+from runcore.engine import AgentEngine
+from runcore.memory.context_manager import (
+    load_conversation_context,
+    save_messages_to_db,
+    context_cache,
+)
+from runcore.context import set_user_context, clear_context, set_conversation_id
 
+log = logging.getLogger(__name__)
 router = APIRouter()
 
+_active_sessions: dict[str, asyncio.Task] = {}
 
-def _build_system_prompt(phase: str = "clarify") -> str:
-    """构建 system prompt"""
-    skills = get_cached_skills_info()
-
-    lines = [
-        "你是一个全栈开发 AI Agent，基于 Conduit 全栈项目工作。",
-        "Conduit 是一个 Medium 克隆应用：",
-        "  - Backend: Express.js + Sequelize + PostgreSQL, 端口 3001",
-        "  - Frontend: React 19 + Vite + React Router, 端口 3000",
-        "",
-        "## 可用工具（function calling）",
-    ]
-
-    tool_skills = [s for s in skills if s["has_tools"]]
-    guide_skills = [s for s in skills if not s["has_tools"]]
-
-    if tool_skills:
-        lines.append("\n### 工具型 Skill（可直接调用）")
-        for s in tool_skills:
-            lines.append(f"- **{s['name']}**: {s['description']}")
-
-    if guide_skills:
-        lines.append("\n### 指令型 Skill（阅读 SKILL.md 获取详细指南）")
-        for s in guide_skills:
-            lines.append(f"- **{s['name']}**: {s['description']}")
-
-    lines.extend([
-        "",
-        "## 行为规范",
-        "1. 每次操作前先检查工具的 SKILL.md",
-        "2. 生成文件使用 conduit_write_code",
-        "3. 所有路径相对于 Conduit 仓库根目录",
-        "4. 遵循后端优先原则：Model → Controller → Route → Frontend",
-    ])
-
-    return "\n".join(lines)
+# SSE stream timeout — client gets kicked off if nothing arrives for this many seconds
+_STREAM_TIMEOUT_SECONDS = 120
 
 
-@router.post("/chat/{session_id}")
-async def chat_stream(session_id: str, request: Request):
-    """SSE 流式聊天端点"""
+@router.post('/chat')
+async def chat(request: Request):
+    """SSE streaming chat endpoint with context compression.
 
+    Routes to StreamingAgentEngine (async + parallel tools) by default.
+    Falls back to the original AgentEngine for backward compatibility.
+    """
     body = await request.json()
-    message = body.get("message", "")
-    phase = body.get("phase", "clarify")
+    message = body.get('message', '')
+    conversation_id = body.get('conversation_id')
+    username = body.get('username', 'default')
+    use_new_engine = body.get('new_engine', True)
 
-    storage_dir = f"{get_storage_path()}/sessions/{session_id}"
-    provider = create_provider()
+    if not message:
+        return JSONResponse({'error': 'Empty message'}, status_code=400)
 
-    # 构建 system message
-    system_prompt = _build_system_prompt(phase)
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": message},
-    ]
+    async def event_generator(request: Request):
+        engine = None
+        session_id = str(uuid.uuid4())
+        task: asyncio.Task | None = None
 
-    chat = ChatManager(session_id, storage_dir)
-    chat.messages = messages
+        async def _stream():
+            nonlocal engine
+            try:
+                from core.config import load_user_config
+                config = load_user_config(username)
+                set_user_context(username, config)
+                if conversation_id:
+                    set_conversation_id(conversation_id)
 
-    tool_runner = ToolRunner()
-    tool_runner.reset_count()
+                if use_new_engine:
+                    engine = StreamingAgentEngine(username, config)
+                else:
+                    engine = AgentEngine(username, config)
 
-    # 加载工具 schema
-    from engine.tool import load_tool_schemas
-    tools = load_tool_schemas()
+                ctx_conv_id = conversation_id or f'conv_{uuid.uuid4().hex[:12]}'
+                context_messages = await load_conversation_context(ctx_conv_id, username)
 
-    async def event_generator():
+                for msg in context_messages:
+                    role = 'user' if hasattr(msg, 'role') and msg.role == 'user' else \
+                           'assistant' if hasattr(msg, 'role') and msg.role == 'assistant' else 'system'
+                    if hasattr(msg, 'content') and msg.content:
+                        if role == 'system' and 'Previous conversation summary:' in (msg.content or ''):
+                            continue
+                        engine.add_to_history(role, msg.content or '')
+
+                event_count = 0
+                async for event_str in engine.chat_stream(message, conversation_id):
+                    if event_str.strip():
+                        event_count += 1
+                        log.info(f'SSE event {event_count}: {event_str[:120].strip()}')
+                        yield {'event': 'message', 'data': event_str}
+
+                log.info(f'SSE stream ended, total events: {event_count}')
+                yield {'event': 'message', 'data': '{"event":"done","data":null}'}
+
+            except asyncio.CancelledError:
+                log.info(f'SSE session {session_id} cancelled')
+                yield {'event': 'message', 'data': json.dumps({'event': 'error', 'data': 'Request cancelled'})}
+                raise
+            except Exception as e:
+                log.exception('Chat error in SSE stream')
+                yield {'event': 'message', 'data': json.dumps({'event': 'error', 'data': str(e)})}
+            finally:
+                clear_context()
+                _active_sessions.pop(session_id, None)
+                if engine and hasattr(engine, 'cleanup'):
+                    try:
+                        engine.cleanup()
+                    except Exception:
+                        pass
+
         try:
-            for event in run_chat_turn(chat, tool_runner, provider, tools):
-                etype = event.get("type", "")
+            _active_sessions[session_id] = asyncio.current_task()
+            async for chunk in _stream():
+                # Check if client disconnected before yielding
+                if await request.is_disconnected():
+                    log.warning(f'Client disconnected, aborting session {session_id}')
+                    break
+                yield chunk
+        except GeneratorExit:
+            log.info(f'SSE client disconnected, session {session_id} ending')
 
-                if etype == "error":
-                    yield {"event": "error", "data": json.dumps(event, ensure_ascii=False)}
-                    continue
-
-                if etype == "tool_call":
-                    yield {"event": "tool_call", "data": json.dumps(event, ensure_ascii=False)}
-                    continue
-
-                if etype == "usage":
-                    yield {"event": "usage", "data": json.dumps(event, ensure_ascii=False)}
-                    continue
-
-                if etype == "text_chunk":
-                    yield {"event": "text", "data": json.dumps({"content": event.get("content", "")}, ensure_ascii=False)}
-                    continue
-
-                if etype == "thinking_chunk":
-                    yield {"event": "thinking", "data": json.dumps({"content": event.get("content", "")}, ensure_ascii=False)}
-                    continue
-
-                if etype in ("done", "max_rounds"):
-                    chat.save_history()
-                    yield {"event": "done", "data": "{}"}
-
-        except Exception as e:
-            yield {"event": "error", "data": json.dumps({"content": str(e)}, ensure_ascii=False)}
-
-    return EventSourceResponse(event_generator())
-
-
-@router.get("/chat/{session_id}/history")
-async def get_history(session_id: str):
-    """获取对话历史"""
-    storage_dir = f"{get_storage_path()}/sessions/{session_id}"
-    import os
-    history_file = os.path.join(storage_dir, f"{session_id}.json")
-    if not os.path.exists(history_file):
-        return {"messages": []}
-    import json
-    with open(history_file, encoding="utf-8") as f:
-        return {"messages": json.load(f)}
+    return EventSourceResponse(event_generator(request), ping=15)

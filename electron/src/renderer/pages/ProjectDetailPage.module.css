@@ -1,0 +1,64 @@
+.container {
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.breadcrumb {
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255, 122, 61, 0.08);
+  border: 1px solid rgba(255, 122, 61, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.descriptions :global(.ant-descriptions-item-label) {
+  color: var(--h-text-3) !important;
+  font-size: 13px !important;
+}
+.descriptions :global(.ant-descriptions-item-content) {
+  font-size: 14px !important;
+}
+
+.sessionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sessionCard {
+  background: var(--h-bg-pane) !important;
+  border-color: var(--h-line) !important;
+  border-radius: 10px !important;
+  cursor: pointer;
+}
+.sessionCard:hover {
+  border-color: var(--h-accent-border) !important;
+}
+
+.sessionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

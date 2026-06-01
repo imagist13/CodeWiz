@@ -1,0 +1,25 @@
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.probe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: default;
+  transition: all 0.15s;
+  min-width: 120px;
+}
+.probe:hover {
+  filter: brightness(1.1);
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--h-text);
+}

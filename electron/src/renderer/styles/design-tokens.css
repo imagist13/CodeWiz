@@ -1,0 +1,112 @@
+/* Hermes Design Tokens — Colors
+   Anthropic-flavored: ink/bone/persimmon palette
+   Source: hermes-agent-cn-desktop/packages/shared-ui/src/tokens/colors.css */
+
+:root {
+  /* ── Raw ink/bone palette ── */
+  --ink-000: #050403;
+  --ink-050: #0a0908;
+  --ink-100: #11100e;
+  --ink-200: #1a1816;
+  --ink-300: #232120;
+  --ink-400: #2e2b29;
+  --ink-500: #3a3633;
+  --ink-600: #4a4541;
+  --ink-700: #5a554f;
+  --ink-800: #6e685f;
+
+  --bone-100: #f6f1e3;
+  --bone-200: #e8e2d4;
+  --bone-300: #d2cabb;
+  --bone-400: #aaa291;
+  --bone-500: #8a8273;
+  --bone-600: #6d6759;
+
+  /* ── Accent colors ── */
+  --persimmon: #ff7a3d;
+  --persimmon-dim: #c95722;
+  --amber: #e8b85d;
+  --moss: #8db580;
+  --moss-deep: #5e7d54;
+  --rust: #d96666;
+  --rust-deep: #a8413f;
+  --sky: #6e9bd1;
+  --plum: #b58dc4;
+
+  /* ── Light theme ── */
+  --h-bg-app: #fbfaf7;
+  --h-bg-pane: #ffffff;
+  --h-bg-soft: #f8f7f3;
+  --h-bg-input: #ffffff;
+  --h-bg-chip: #f0eee8;
+  --h-bg-code: #f7f6f1;
+  --h-line: #e8e4dc;
+  --h-line-soft: #efebe4;
+  --h-text: #2a2620;
+  --h-text-2: #6b665c;
+  --h-text-3: #867f73;
+  --h-text-4: #cac4b6;
+  --h-ok: #6b8e5a;
+  --h-ok-soft: #e3ecdc;
+  --h-warn: #c08828;
+  --h-warn-soft: #f5e6c5;
+  --h-err: #c4554d;
+  --h-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --h-shadow-l: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --h-accent: #ff7a3d;
+  --h-accent-soft: #f4dfd0;
+  --h-accent-border: #e8b896;
+}
+
+/* ── Dark theme (default) ── */
+[data-theme="dark"] {
+  --h-bg-app: var(--ink-050);
+  --h-bg-pane: var(--ink-100);
+  --h-bg-soft: var(--ink-200);
+  --h-bg-input: var(--ink-200);
+  --h-bg-chip: var(--ink-300);
+  --h-bg-code: var(--ink-200);
+  --h-line: #2a2725;
+  --h-line-soft: #1d1b19;
+  --h-text: var(--bone-200);
+  --h-text-2: var(--bone-400);
+  --h-text-3: #9f978a;
+  --h-text-4: var(--bone-600);
+  --h-ok: var(--moss);
+  --h-ok-soft: rgba(141, 181, 128, 0.08);
+  --h-warn: var(--amber);
+  --h-warn-soft: rgba(232, 184, 93, 0.08);
+  --h-err: var(--rust);
+  --h-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --h-shadow-l: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --h-sidebar-stripe: var(--ink-100);
+  --h-accent: var(--persimmon);
+  --h-accent-soft: rgba(255, 122, 61, 0.08);
+  --h-accent-border: rgba(255, 122, 61, 0.3);
+}
+
+/* ── Light theme override ── */
+[data-theme="light"] {
+  --h-bg-app: #fbfaf7;
+  --h-bg-pane: #ffffff;
+  --h-bg-soft: #f8f7f3;
+  --h-bg-input: #ffffff;
+  --h-bg-chip: #f0eee8;
+  --h-bg-code: #f7f6f1;
+  --h-line: #e8e4dc;
+  --h-line-soft: #efebe4;
+  --h-text: #2a2620;
+  --h-text-2: #6b665c;
+  --h-text-3: #867f73;
+  --h-text-4: #cac4b6;
+  --h-ok: #6b8e5a;
+  --h-ok-soft: #e3ecdc;
+  --h-warn: #c08828;
+  --h-warn-soft: #f5e6c5;
+  --h-err: #c4554d;
+  --h-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --h-shadow-l: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --h-accent: #ff7a3d;
+  --h-accent-soft: #f4dfd0;
+  --h-accent-border: #e8b896;
+}
