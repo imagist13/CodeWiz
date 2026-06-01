@@ -1,5 +1,5 @@
 # ===================
-# Environment
+# Environment & Secrets
 # ===================
 .env
 .env.local
@@ -8,7 +8,7 @@
 .env.*.local
 
 # ===================
-# Credentials & Secrets
+# Credentials
 # ===================
 *.pem
 *.key
@@ -18,37 +18,13 @@ secrets.json
 service-account-key.json
 
 # ===================
-# SSL Certificates
-# ===================
-certbot/
-*.pem
-
-# ===================
 # Dependencies
 # ===================
 node_modules/
-frontend/node_modules/
+.venv/
+venv/
+env/
 ai-service/venv/
-ai-service/__pycache__/
-ai-service/.venv/
-
-# ===================
-# Build outputs
-# ===================
-dist/
-build/
-*.exe
-*.dll
-*.so
-*.dylib
-frontend/.next/
-
-# ===================
-# Go
-# ===================
-backend/vendor/
-backend/*.exe
-backend/tmp/
 
 # ===================
 # Python
@@ -58,6 +34,29 @@ __pycache__/
 *$py.class
 *.egg-info/
 .eggs/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ===================
+# Build outputs
+# ===================
+dist/
+build/
+release/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ===================
+# Electron / Vite
+# ===================
+.electron-vite/
+.vite/
 
 # ===================
 # IDE
@@ -68,25 +67,44 @@ __pycache__/
 *.swo
 .DS_Store
 Thumbs.db
-
-# ===================
-# Logs
-# ===================
 *.log
-logs/
 
 # ===================
-# Temporary files
+# Logs & Temp files
 # ===================
+logs/
+*.log
 *.tmp
 *.temp
 tmp/
 temp/
 
 # ===================
-# v3 Contract+Agent (Conduit clone + 测试覆盖产物)
+# User data (local runtime data)
 # ===================
-ai-service/external/
-.coverage
-.coverage.*
-htmlcov/
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ===================
+# Backend
+# ===================
+backend/vendor/
+backend/tmp/
+backend/*.pyc
+backend/__pycache__/
+
+# ===================
+# Node (pnpm)
+# ===================
+.pnpm-store/
+.pnpm/
+
+# ===================
+# Misc
+# ===================
+certbot/
+*.bak
+*.swp
