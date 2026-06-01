@@ -1,73 +1,48 @@
 package middleware
 
 import (
-	"codewiz-backend/internal/services"
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+
+	"github.com/codewize/backend/internal/service"
 )
 
-func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-			c.Abort()
-			return
+const UserIDKey = "user_id"
+
+func JWTAuth(authService *service.AuthService) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			authHeader := c.Request().Header.Get("Authorization")
+			if authHeader == "" {
+				return echo.NewHTTPError(http.StatusUnauthorized, "missing authorization header")
+			}
+
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				return echo.NewHTTPError(http.StatusUnauthorized, "invalid authorization header format")
+			}
+
+			token := parts[1]
+			claims, err := authService.ValidateToken(token)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired token")
+			}
+
+			userID, err := uuid.Parse(claims.UserID)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, "invalid user id in token")
+			}
+
+			c.Set(UserIDKey, userID)
+			return next(c)
 		}
-
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
-		claims, err := authService.ValidateToken(tokenString)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
-			return
-		}
-
-		c.Set("userID", claims.UserID)
-		c.Set("email", claims.Email)
-
-		c.Next()
 	}
 }
 
-func OptionalAuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.Next()
-			return
-		}
-
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.Next()
-			return
-		}
-
-		tokenString := parts[1]
-		claims, err := authService.ValidateToken(tokenString)
-		if err == nil {
-			c.Set("userID", claims.UserID)
-			c.Set("email", claims.Email)
-		}
-
-		c.Next()
-	}
-}
-
-func GetUserID(c *gin.Context) uuid.UUID {
-	if userID, exists := c.Get("userID"); exists {
-		return userID.(uuid.UUID)
-	}
-	return uuid.Nil
+func GetUserID(c echo.Context) uuid.UUID {
+	id, _ := c.Get(UserIDKey).(uuid.UUID)
+	return id
 }
