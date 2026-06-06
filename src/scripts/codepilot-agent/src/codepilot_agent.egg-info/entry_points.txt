@@ -1,0 +1,2 @@
+[console_scripts]
+codepilot-agent = codepilot_agent.cli:main

@@ -18,6 +18,11 @@ describe('resolveLegacyRuntimeForDisplay', () => {
     assert.equal(resolveLegacyRuntimeForDisplay('native', false), 'native');
   });
 
+  it('preserves explicit python-agent regardless of CLI state', () => {
+    assert.equal(resolveLegacyRuntimeForDisplay('python-agent', true), 'python-agent');
+    assert.equal(resolveLegacyRuntimeForDisplay('python-agent', false), 'python-agent');
+  });
+
   it('migrates legacy auto to claude-code-sdk when CLI is installed', () => {
     assert.equal(resolveLegacyRuntimeForDisplay('auto', true), 'claude-code-sdk');
   });
@@ -40,9 +45,10 @@ describe('resolveLegacyRuntimeForDisplay', () => {
 });
 
 describe('isConcreteRuntime', () => {
-  it('accepts the two concrete runtime ids', () => {
+  it('accepts the three concrete runtime ids', () => {
     assert.equal(isConcreteRuntime('claude-code-sdk'), true);
     assert.equal(isConcreteRuntime('native'), true);
+    assert.equal(isConcreteRuntime('python-agent'), true);
   });
 
   it('rejects legacy auto and everything else', () => {

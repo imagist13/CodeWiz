@@ -3,6 +3,7 @@ import pkg from "./package.json" with { type: "json" };
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  allowedDevOrigins: ['127.0.0.1', '198.18.0.1'],
   // serverExternalPackages: keep these in node_modules at runtime instead of bundling.
   // - better-sqlite3 / zlib-sync: native modules, can't be bundled
   // - discord.js / @discordjs/ws: dynamic require chain

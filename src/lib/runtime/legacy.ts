@@ -18,10 +18,10 @@
  *   migration writes "Native".
  */
 
-export type ConcreteRuntime = 'native' | 'claude-code-sdk';
+export type ConcreteRuntime = 'native' | 'claude-code-sdk' | 'python-agent';
 
 export function isConcreteRuntime(v: unknown): v is ConcreteRuntime {
-  return v === 'native' || v === 'claude-code-sdk';
+  return v === 'native' || v === 'claude-code-sdk' || v === 'python-agent';
 }
 
 /**
@@ -29,6 +29,7 @@ export function isConcreteRuntime(v: unknown): v is ConcreteRuntime {
  * migration purposes. Rules:
  *   - 'claude-code-sdk' → 'claude-code-sdk'   (user's explicit choice)
  *   - 'native'          → 'native'            (user's explicit choice)
+ *   - 'python-agent'    → 'python-agent'       (user's explicit choice)
  *   - 'auto' / null / undefined / anything else → environment-driven:
  *                          cliConnected ? 'claude-code-sdk' : 'native'
  *

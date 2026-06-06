@@ -18,6 +18,7 @@ interface RuntimeBadgeProps {
 const LABELS: Record<ConcreteRuntime, { en: string; zh: string }> = {
   native: { en: 'Agent: AI SDK', zh: 'Agent 引擎：AI SDK' },
   'claude-code-sdk': { en: 'Agent: Claude Code', zh: 'Agent 引擎：Claude Code' },
+  'python-agent': { en: 'Agent: Python', zh: 'Agent 引擎：Python Agent' },
 };
 
 export function RuntimeBadge({ providerId }: RuntimeBadgeProps) {

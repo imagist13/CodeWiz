@@ -11,7 +11,9 @@ export { registerRuntime, getRuntime, getAllRuntimes, getAvailableRuntimes, reso
 import { registerRuntime } from './registry';
 import { nativeRuntime } from './native-runtime';
 import { sdkRuntime } from './sdk-runtime';
+import { pythonRuntime } from './python-runtime';
 
 // Register built-in runtimes
 registerRuntime(nativeRuntime);
 registerRuntime(sdkRuntime);
+registerRuntime(pythonRuntime);

@@ -210,8 +210,8 @@ export function CliSettingsSection() {
   const handleRuntimeChange = async (value: string) => {
     setAgentRuntime(value);
     // Sync cli_enabled for backward compatibility:
-    // native → disable CLI; claude-code-sdk → enable CLI
-    const cliEnabledValue = value === 'native' ? 'false' : 'true';
+    // native / python-agent → disable CLI; claude-code-sdk → enable CLI
+    const cliEnabledValue = value === 'claude-code-sdk' ? 'true' : 'false';
     setCliEnabled(cliEnabledValue === 'true');
     try {
       await fetch("/api/settings/app", {
@@ -340,8 +340,8 @@ export function CliSettingsSection() {
         <FieldRow
           label={isZh ? '执行引擎' : 'Engine'}
           description={isZh
-            ? '选择执行 AI 任务的引擎。Claude Code 需要先安装 CLI；AI SDK 直接调用服务商 API，无需 CLI。'
-            : 'Choose the engine that runs AI tasks. Claude Code requires the CLI; AI SDK calls provider APIs directly with no CLI.'}
+            ? '选择执行 AI 任务的引擎。Claude Code 需要安装 CLI 并支持工具和 MCP；AI SDK 直接调用 API；Python Agent 为轻量级对话模式，无需 CLI。'
+            : 'Choose the engine for AI tasks. Claude Code needs CLI and supports tools/MCP; AI SDK calls APIs directly; Python Agent is lightweight chat without CLI.'}
         >
           <Select value={agentRuntime} onValueChange={handleRuntimeChange}>
             <SelectTrigger className="w-[180px] h-8 text-xs">
@@ -350,6 +350,7 @@ export function CliSettingsSection() {
             <SelectContent>
               <SelectItem value="claude-code-sdk">{isZh ? 'Claude Code' : 'Claude Code'}</SelectItem>
               <SelectItem value="native">{isZh ? 'AI SDK' : 'AI SDK'}</SelectItem>
+              <SelectItem value="python-agent">{isZh ? 'Python Agent' : 'Python Agent'}</SelectItem>
             </SelectContent>
           </Select>
         </FieldRow>
@@ -408,6 +409,17 @@ export function CliSettingsSection() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Python Agent 状态 — 选了 Python Agent 时显示 */}
+        {agentRuntime === 'python-agent' && (
+          <FieldRow label={isZh ? 'Python Agent 状态' : 'Python Agent Status'} separator>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {isZh ? '轻量对话模式，通过 Anthropic/MiniMax API 直接调用模型' : 'Lightweight chat mode, calls models via Anthropic/MiniMax API'}
+              </span>
+            </div>
+          </FieldRow>
         )}
       </SettingsCard>
 
