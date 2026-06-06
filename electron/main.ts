@@ -1,23 +1,3 @@
-// Sentry must be initialized before all other imports to catch early crashes
-import * as Sentry from '@sentry/electron/main';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
-
-// Check opt-out before init — reads a marker file that the renderer writes
-const sentryOptOutPath = join(
-  process.env.HOME || process.env.USERPROFILE || '',
-  '.codepilot',
-  'sentry-disabled',
-);
-const sentryDisabled = existsSync(sentryOptOutPath) &&
-  readFileSync(sentryOptOutPath, 'utf-8').trim() === 'true';
-
-if (!sentryDisabled) {
-  Sentry.init({
-    dsn: 'https://245dc3525425bcd8eb99dd4b9a2ca5cd@o4511161899548672.ingest.us.sentry.io/4511161904791552',
-  });
-}
-
 import { app, BrowserWindow, Notification, nativeImage, dialog, session, utilityProcess, ipcMain, shell, Tray, Menu } from 'electron';
 import path from 'path';
 import { execFileSync, spawn, ChildProcess } from 'child_process';
@@ -140,7 +120,7 @@ async function isBridgeActive(): Promise<boolean> {
     return await new Promise<boolean>((resolve) => {
       const req = http.get(`http://127.0.0.1:${serverPort}/api/bridge`, (res: { statusCode?: number; on: (event: string, cb: (data?: Buffer) => void) => void }) => {
         let body = '';
-        res.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+        res.on('data', (chunk) => { if (chunk) body += chunk.toString(); });
         res.on('end', () => {
           try {
             const data = JSON.parse(body);

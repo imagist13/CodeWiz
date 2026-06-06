@@ -6,20 +6,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 // NavRail removed — navigation merged into ChatListPanel
 import { ChatListPanel } from "./ChatListPanel";
 import { ResizeHandle } from "./ResizeHandle";
-import { UpdateDialog } from "./UpdateDialog";
 import { FeatureAnnouncementDialog } from "./FeatureAnnouncementDialog";
-import { UpdateBanner } from "./UpdateBanner";
 import { UnifiedTopBar } from "./UnifiedTopBar";
 import { PanelZone } from "./PanelZone";
 import { PanelContext, type PreviewViewMode, type PreviewSource } from "@/hooks/usePanel";
-import { UpdateContext } from "@/hooks/useUpdate";
-import { useUpdateChecker } from "@/hooks/useUpdateChecker";
 import { ImageGenContext, useImageGenState } from "@/hooks/useImageGen";
 import { BatchImageGenContext, useBatchImageGenState } from "@/hooks/useBatchImageGen";
 import { SplitContext, type SplitSession } from "@/hooks/useSplit";
 import { SplitChatContainer } from "./SplitChatContainer";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { SentryInit } from "./SentryInit";
 import { getActiveSessionIds, getSnapshot } from "@/lib/stream-session-manager";
 import { useGitStatus } from "@/hooks/useGitStatus";
 import { SetupCenter } from '@/components/setup/SetupCenter';
@@ -448,7 +443,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   // --- Update checker (native Electron + browser fallback) ---
-  const updateContextValue = useUpdateChecker();
 
   const panelContextValue = useMemo(
     () => ({
@@ -496,9 +490,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const batchImageGenValue = useBatchImageGenState();
 
   return (
-    <UpdateContext.Provider value={updateContextValue}>
-      <SentryInit />
-      <PanelContext.Provider value={panelContextValue}>
+    <PanelContext.Provider value={panelContextValue}>
         <SplitContext.Provider value={splitContextValue}>
         <ImageGenContext.Provider value={imageGenValue}>
         <BatchImageGenContext.Provider value={batchImageGenValue}>
@@ -508,8 +500,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <ChatListPanel
                 open={chatListOpen}
                 width={chatListWidth}
-                hasUpdate={updateContextValue.updateInfo?.updateAvailable ?? false}
-                readyToInstall={updateContextValue.updateInfo?.readyToInstall ?? false}
               />
             </ErrorBoundary>
             {chatListOpen && (
@@ -517,7 +507,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <UnifiedTopBar />
-              <UpdateBanner />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                   <main className="relative flex-1 overflow-hidden">
@@ -532,7 +521,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <UpdateDialog />
           <FeatureAnnouncementDialog />
           <Toaster />
           <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
@@ -547,6 +535,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </ImageGenContext.Provider>
         </SplitContext.Provider>
       </PanelContext.Provider>
-    </UpdateContext.Provider>
   );
 }

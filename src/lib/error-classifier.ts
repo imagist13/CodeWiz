@@ -5,53 +5,6 @@
  * classifier that produces actionable, user-facing error messages.
  */
 
-// ── Sentry integration (lazy, no-op when unavailable) ───────────
-
-const SENTRY_REPORTABLE: Set<string> = new Set([
-  // PROCESS_CRASH removed — too noisy (136+ events/day), mostly user config issues
-  'UNKNOWN', 'CLI_NOT_FOUND', 'CLI_INSTALL_CONFLICT',
-  'MISSING_GIT_BASH', 'PROVIDER_NOT_APPLIED', 'SESSION_STATE_ERROR',
-  // Native Runtime errors
-  'NATIVE_STREAM_ERROR', 'OPENAI_AUTH_FAILED', 'MCP_CONNECTION_ERROR',
-]);
-
-function reportToSentry(category: string, error: unknown, extra?: Record<string, unknown>) {
-  if (!SENTRY_REPORTABLE.has(category)) return;
-  // Skip aborted operations — these are user-initiated cancellations
-  const msg = error instanceof Error ? error.message : String(error);
-  if (/abort|cancel/i.test(msg)) return;
-
-  // Fire-and-forget async import — never blocks the classifier
-  import('@sentry/node').then((Sentry) => {
-    Sentry.withScope((scope) => {
-      scope.setTag('error.category', category);
-      scope.setTag('error.provider', (extra?.providerName as string) || 'unknown');
-      scope.setTag('error.runtime', (extra?.runtime as string) || 'unknown');
-      if (extra?.baseUrl) scope.setTag('provider.baseUrl', extra.baseUrl as string);
-      if (extra?.modelId) scope.setTag('model.id', extra.modelId as string);
-      if (extra) scope.setExtras(extra);
-      scope.setFingerprint([category, msg.slice(0, 100)]);
-      if (error instanceof Error) {
-        Sentry.captureException(error);
-      } else {
-        Sentry.captureMessage(String(error), 'error');
-      }
-    });
-  }).catch(() => { /* Sentry not available */ });
-}
-
-/**
- * Report a native runtime error to Sentry.
- * Called from agent-loop.ts and MCP manager for errors that bypass the main classifier.
- */
-export function reportNativeError(
-  category: ClaudeErrorCategory,
-  error: unknown,
-  context?: { providerName?: string; modelId?: string; sessionId?: string; baseUrl?: string },
-) {
-  reportToSentry(category, error, { ...context, runtime: 'native' });
-}
-
 // ── Error categories ────────────────────────────────────────────
 
 export type ClaudeErrorCategory =
@@ -466,13 +419,6 @@ function buildResult(
   extraDetail: string,
 ): ClassifiedError {
   const category = pattern.category;
-
-  // Report severe errors to Sentry (non-blocking, ignores expected errors like RATE_LIMITED)
-  reportToSentry(category, ctx.error, {
-    providerName: ctx.providerName,
-    baseUrl: ctx.baseUrl,
-    rawMessage,
-  });
 
   return {
     category,

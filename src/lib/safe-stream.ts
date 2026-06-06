@@ -7,8 +7,7 @@
  * If the consumer aborts the stream — by closing the browser tab, hitting
  * Stop, or AbortController firing — the underlying controller transitions
  * to a "closed" state. Subsequent enqueue() calls throw
- * `TypeError: Invalid state: Controller is already closed`, which Sentry
- * recorded 53 times (fatal) over 14 days.
+ * `TypeError: Invalid state: Controller is already closed`.
  *
  * Each individual call site could try/catch, but with 40+ call sites the
  * coverage is hard to keep in sync. This module exports `wrapController()`
@@ -17,8 +16,7 @@
  *
  * Closed-state errors from genuine bugs (not from racy late writes) are
  * still observable via the optional `onClosedWrite` callback, which logs
- * once per stream so we can detect a regression in dev/test without
- * spamming Sentry.
+ * once per stream so we can detect a regression in dev/test.
  */
 
 export interface SafeStreamController<T> {

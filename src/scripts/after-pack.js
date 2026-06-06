@@ -75,10 +75,10 @@ module.exports = async function afterPack(context) {
   console.log(`[afterPack] Rebuilt .node file: ${rebuiltSource} (${sourceStats.size} bytes, mtime: ${sourceStats.mtime.toISOString()})`);
 
   // Step 3: Find and replace all better_sqlite3.node in standalone resources
-  // macOS: <appOutDir>/CodePilot.app/Contents/Resources/standalone/...
+  // macOS: <appOutDir>/CodeWiz.app/Contents/Resources/standalone/...
   // Windows/Linux: <appOutDir>/resources/standalone/...
   const searchRoots = [
-    path.join(appOutDir, 'CodePilot.app', 'Contents', 'Resources', 'standalone'),
+    path.join(appOutDir, 'CodeWiz.app', 'Contents', 'Resources', 'standalone'),
     path.join(appOutDir, 'Contents', 'Resources', 'standalone'),
     path.join(appOutDir, 'resources', 'standalone'),
   ];

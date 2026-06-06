@@ -4,71 +4,38 @@ import { type Page, type Locator, expect } from '@playwright/test';
 // Navigation helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Stub /api/app/updates to deterministically return "no update". The real
- * route reaches out to GitHub Releases; when an update is available the
- * update-prompt dialog covers popovers and makes smoke tests flaky. Called
- * from every goTo* helper so smoke tests stay stable regardless of what
- * version is published upstream.
- */
-async function disableUpdateDialog(page: Page) {
-  await page.route('**/api/app/updates**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        latestVersion: '0.0.0',
-        currentVersion: '0.0.0',
-        updateAvailable: false,
-        releaseName: '',
-        releaseNotes: '',
-        publishedAt: '',
-        releaseUrl: '',
-        downloadUrl: '',
-        downloadAssetName: '',
-      }),
-    });
-  });
-}
-
 /** Navigate to the chat page and wait for it to be ready. */
 export async function goToChat(page: Page) {
-  await disableUpdateDialog(page);
   await page.goto('/chat');
   await waitForPageReady(page);
 }
 
 /** Navigate to a specific conversation. */
 export async function goToConversation(page: Page, id: string) {
-  await disableUpdateDialog(page);
   await page.goto(`/chat/${id}`);
   await waitForPageReady(page);
 }
 
 /** Navigate to the plugins / skills page. */
 export async function goToPlugins(page: Page) {
-  await disableUpdateDialog(page);
   await page.goto('/plugins');
   await waitForPageReady(page);
 }
 
 /** Navigate to the MCP management page. */
 export async function goToMCP(page: Page) {
-  await disableUpdateDialog(page);
   await page.goto('/plugins/mcp');
   await waitForPageReady(page);
 }
 
 /** Navigate to the settings page. */
 export async function goToSettings(page: Page) {
-  await disableUpdateDialog(page);
   await page.goto('/settings');
   await waitForPageReady(page);
 }
 
 /** Navigate to the settings page with a specific tab selected. */
 export async function goToSettingsTab(page: Page, tab: string) {
-  await disableUpdateDialog(page);
   await page.goto(`/settings?tab=${tab}`);
   await waitForPageReady(page);
 }

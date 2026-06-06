@@ -115,10 +115,6 @@ export class ErrorBoundary extends React.Component<
 
     console.error("[ErrorBoundary] Uncaught error:", error);
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
-    // Report to Sentry if available
-    import('@sentry/browser').then((Sentry) => {
-      Sentry.captureException(error, { contexts: { react: { componentStack: errorInfo.componentStack } } });
-    }).catch(() => { /* Sentry not available */ });
   }
 
   handleReset = () => {

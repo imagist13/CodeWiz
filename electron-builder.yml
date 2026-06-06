@@ -1,9 +1,9 @@
-appId: com.codepilot.app
-productName: CodePilot
+appId: com.codewiz.app
+productName: CodeWiz
 publish:
   provider: github
   owner: op7418
-  repo: CodePilot
+  repo: CodeWiz
 directories:
   output: release
 files:
@@ -80,10 +80,10 @@ linux:
   artifactName: "${productName}-${version}-${arch}.${ext}"
   desktop:
     entry:
-      Name: CodePilot
+      Name: CodeWiz
       Comment: A native desktop GUI for Claude Code
       Categories: Development;IDE;
-      StartupWMClass: codepilot
+      StartupWMClass: codewiz
   # arch is NOT specified here — controlled by CI via --x64 / --arm64 CLI flags.
   # Listing both arches here causes electron-builder to build both on every job,
   # which fails when cross-compiling native modules (zlib-sync -m64 on arm64).
