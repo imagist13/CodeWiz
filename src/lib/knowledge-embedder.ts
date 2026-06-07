@@ -44,10 +44,48 @@ export const KNOWN_DIMENSIONS: Record<string, number> = {
   'bge-m3': 1024,
   'm3e': 1536,
   'deepseek-embedding': 1024,
+  // Local models
+  'nomic-embed-text': 768,   // Ollama default embedding model
+  'bge-large-zh-v1.5': 1024, // Chinese embedding model
+  'embed-english-v3.0': 1024, // Cohere
 };
 
 export function getEmbeddingDimension(model: string): number {
   return KNOWN_DIMENSIONS[model] ?? 1024;
+}
+
+// ---------------------------------------------------------------------------
+// Provider → embedding model / endpoint auto-detection
+// ---------------------------------------------------------------------------
+
+/** Maps provider base_url patterns to the best embedding model. */
+function inferEmbeddingModelForProvider(provider: ApiProvider): string | null {
+  const baseUrl = (provider.base_url || '').toLowerCase();
+  const extraEnv = provider.extra_env || '';
+
+  // OpenAI
+  if (baseUrl.includes('openai.com')) return 'text-embedding-3-small';
+  // Azure OpenAI — deployments use model name directly (e.g. text-embedding-3-small)
+  if (baseUrl.includes('azure') || extraEnv.includes('AZURE_OPENAI')) return 'text-embedding-3-small';
+  // Ollama — nomic-embed-text is the standard local embedding model
+  if (baseUrl.includes('localhost:11434') || baseUrl.includes('ollama')) {
+    return 'nomic-embed-text';
+  }
+  // DeepSeek — has its own embedding endpoint
+  if (baseUrl.includes('deepseek.com')) return 'text-embedding-3-small';
+  // Cohere
+  if (baseUrl.includes('cohere.ai')) return 'embed-english-v3.0';
+
+  // Provider type hints (some store model name in extra_env)
+  if (extraEnv.includes('EMBEDDING_MODEL')) {
+    try {
+      const env = JSON.parse(extraEnv);
+      if (env.EMBEDDING_MODEL) return env.EMBEDDING_MODEL;
+    } catch { /* ignore */ }
+  }
+
+  // Default — OpenAI-compatible model (works with OpenRouter, Cloudflare AI, etc.)
+  return 'text-embedding-3-small';
 }
 
 // ---------------------------------------------------------------------------
@@ -57,13 +95,22 @@ export function getEmbeddingDimension(model: string): number {
 /**
  * Call the embedding endpoint of a provider.
  * Supports OpenAI-compatible `/embeddings` format.
+ *
+ * Known endpoint patterns:
+ * - OpenAI:             baseUrl/v1/embeddings
+ * - OpenRouter:         baseUrl/embeddings  (or baseUrl/v1/embeddings)
+ * - Ollama:             baseUrl/api/embeddings
+ * - Azure OpenAI:       baseUrl/openai/deployments/{deployment}/embeddings
+ * - Generic Anthropic:  baseUrl/embeddings  (most do not expose this)
+ *
+ * This function tries common patterns and returns the first that succeeds.
  */
 async function callEmbeddingApi(
   provider: ApiProvider,
   texts: string[],
   model: string,
 ): Promise<number[][]> {
-  const baseUrl = provider.base_url.replace(/\/$/, '');
+  const baseUrl = provider.base_url.replace(/\/$/, '').replace(/\/v1$/, '');
   const apiKey = provider.api_key;
 
   let extraHeaders: Record<string, string> = {};
@@ -71,40 +118,66 @@ async function callEmbeddingApi(
     extraHeaders = JSON.parse(provider.headers_json || '{}');
   } catch { /* ignore */ }
 
-  const response = await fetch(`${baseUrl}/embeddings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-      ...extraHeaders,
-    },
-    body: JSON.stringify({
-      model,
-      input: texts,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => 'unknown error');
-    throw new Error(
-      `Embedding API error ${response.status}: ${text} (provider: ${provider.name})`
-    );
-  }
-
-  const data = (await response.json()) as {
-    data?: Array<{ embedding: number[] }>;
-    embeddings?: number[][];
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    ...extraHeaders,
   };
 
-  if (Array.isArray(data.data)) {
-    return data.data.map((d) => d.embedding);
-  }
-  if (Array.isArray(data.embeddings)) {
-    return data.embeddings;
+  const body = JSON.stringify({ model, input: texts });
+
+  // Try known endpoint patterns in order
+  const endpointCandidates = [
+    `${baseUrl}/embeddings`,
+    `${baseUrl}/v1/embeddings`,
+    `${baseUrl}/api/embeddings`,
+  ];
+
+  // Deduplicate
+  const uniqueCandidates = [...new Set(endpointCandidates)];
+
+  let lastError = '';
+
+  for (const endpoint of uniqueCandidates) {
+    try {
+      const response = await fetch(endpoint, { method: 'POST', headers, body });
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          data?: Array<{ embedding: number[] }>;
+          embeddings?: number[][];
+        };
+
+        if (Array.isArray(data.data)) {
+          return data.data.map((d) => d.embedding);
+        }
+        if (Array.isArray(data.embeddings)) {
+          return data.embeddings;
+        }
+      } else if (response.status !== 404) {
+        // Non-404 error on first candidate — propagate immediately
+        const text = await response.text().catch(() => 'unknown error');
+        throw new Error(`Embedding API error ${response.status}: ${text} (provider: ${provider.name})`);
+      } else {
+        lastError = `404 on ${endpoint}`;
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('Embedding API error')) {
+        throw e; // Re-throw structured errors immediately
+      }
+      lastError = String(e);
+    }
   }
 
+  // All candidates returned 404
+  const hint = `\n\nProvider "${provider.name}" (${provider.provider_type}) does not appear to expose an embedding endpoint. Try:\n` +
+    `  • OpenAI API key + https://api.openai.com/v1\n` +
+    `  • OpenRouter (https://openrouter.ai) — supports embeddings\n` +
+    `  • Ollama (localhost:11434) + nomic-embed-text model\n` +
+    `  • Azure OpenAI + a text-embedding deployment`;
+
   throw new Error(
-    `Unexpected embedding response format from provider "${provider.name}". Expected { data: [{ embedding: float[] }] }.`
+    `Embedding endpoint not found (tried: ${uniqueCandidates.join(', ')}). Last error: ${lastError}${hint}`
   );
 }
 
@@ -149,8 +222,18 @@ export async function reindexWorkspace(
   provider: ApiProvider,
   model: string,
   options?: { force?: boolean },
-): Promise<{ fileCount: number; chunkCount: number }> {
+): Promise<{ fileCount: number; chunkCount: number; effectiveModel?: string }> {
   const force = options?.force ?? false;
+
+  // Auto-detect embedding model from provider if the configured one is generic/default
+  let effectiveModel = model;
+  if (!model || model === 'text-embedding-3-small') {
+    const detected = inferEmbeddingModelForProvider(provider);
+    if (detected && detected !== model) {
+      effectiveModel = detected;
+      console.log(`[knowledge-embedder] Auto-detected embedding model: ${effectiveModel} (provider: ${provider.name})`);
+    }
+  }
 
   const manifest = loadManifest(dir);
   const allChunks = loadChunks(dir);
@@ -163,11 +246,9 @@ export async function reindexWorkspace(
     chunksByFile.set(chunk.path, list);
   }
 
-  let chunkCount = 0;
-  const dimension = getEmbeddingDimension(model);
-
   // Group all new/updated entries for batch embedding
   const pendingEntries: KnowledgeEntry[] = [];
+  let chunkCount = 0;
 
   for (const [filePath, chunks] of chunksByFile) {
     const existingEntry = getKnowledgeEntryByChunkId(chunks[0].chunkId);
@@ -200,8 +281,8 @@ export async function reindexWorkspace(
         chunk_id: chunk.chunkId,
         start_line: chunk.startLine,
         end_line: chunk.endLine,
-        embedding_model: model,
-        dimension,
+        embedding_model: effectiveModel,
+        dimension: getEmbeddingDimension(effectiveModel),
         mtime_ms: mtimeMs,
         vector_json: '[]',
         created_at: new Date().toISOString(),
@@ -214,7 +295,7 @@ export async function reindexWorkspace(
   const BATCH_SIZE = 50;
   for (let i = 0; i < pendingEntries.length; i += BATCH_SIZE) {
     const batch = pendingEntries.slice(i, i + BATCH_SIZE);
-    await embedAndStore(batch, provider, model);
+    await embedAndStore(batch, provider, effectiveModel);
     chunkCount += batch.length;
   }
 
@@ -228,7 +309,7 @@ export async function reindexWorkspace(
     deleteKnowledgeEntriesByFile(dir, entry.file_path);
   }
 
-  return { fileCount: chunksByFile.size, chunkCount };
+  return { fileCount: chunksByFile.size, chunkCount, effectiveModel };
 }
 
 // ---------------------------------------------------------------------------

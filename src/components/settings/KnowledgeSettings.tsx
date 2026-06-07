@@ -32,10 +32,12 @@ interface ProvidersResponse {
 }
 
 const EMBEDDING_MODELS = [
-  { value: "text-embedding-3-small", label: "text-embedding-3-small (1536d)", dimension: 1536 },
-  { value: "text-embedding-3-large", label: "text-embedding-3-large (3072d)", dimension: 3072 },
-  { value: "text-embedding-ada-002", label: "text-embedding-ada-002 (1536d)", dimension: 1536 },
-  { value: "gemini-embedding-exp-03-07", label: "Gemini Embedding (768d)", dimension: 768 },
+  { value: "text-embedding-3-small", label: "text-embedding-3-small (1536d)", hint: "OpenAI / OpenRouter / DeepSeek" },
+  { value: "text-embedding-3-large", label: "text-embedding-3-large (3072d)", hint: "OpenAI — higher accuracy, slower" },
+  { value: "text-embedding-ada-002", label: "text-embedding-ada-002 (1536d)", hint: "Legacy OpenAI model" },
+  { value: "gemini-embedding-exp-03-07", label: "Gemini Embedding (768d)", hint: "Google Gemini — multilingual" },
+  { value: "nomic-embed-text", label: "nomic-embed-text (768d)", hint: "Ollama — 本地部署，免费" },
+  { value: "bge-large-zh-v1.5", label: "bge-large-zh-v1.5 (1024d)", hint: "Ollama — 中文 embedding" },
 ] as const;
 
 export function KnowledgeSettings() {
@@ -56,6 +58,7 @@ export function KnowledgeSettings() {
   const [saving, setSaving] = useState(false);
   const [workspacePath, setWorkspacePath] = useState<string>("");
   const [noWorkspace, setNoWorkspace] = useState(false);
+  const [indexErrorShown, setIndexErrorShown] = useState<string | null>(null);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -167,7 +170,7 @@ export function KnowledgeSettings() {
       if (res.ok) {
         setIndexSuccess(true);
         await fetchStats();
-        setTimeout(() => setIndexSuccess(false), 3000);
+        setTimeout(() => setIndexSuccess(false), 5000);
       } else {
         setIndexError(data.error || "Indexing failed");
       }
@@ -230,6 +233,22 @@ export function KnowledgeSettings() {
       {enabled && (
         <>
           <SettingsCard>
+            {/* Compatibility notice */}
+            <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
+                <WarningCircle size={16} className="mt-0.5 shrink-0" />
+                <div>
+                  <div className="font-medium">Embedding 需要专用 API 端点</div>
+                  <div className="mt-1 text-xs opacity-80">
+                    大多数 Claude API 提供商（如 MiniMax、GLM、Kimi）仅提供 Messages API，
+                    不支持 <code>/embeddings</code> 端点。
+                    推荐使用：<strong>OpenAI</strong>、<strong>Azure OpenAI</strong>、
+                    <strong>OpenRouter</strong>、或自行部署的 <strong>Ollama + nomic-embed-text</strong>。
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <FieldRow
                 label={t("settings.knowledge.embeddingProvider")}
@@ -265,6 +284,17 @@ export function KnowledgeSettings() {
                   ))}
                 </select>
               </FieldRow>
+
+              {/* Contextual hint based on selected model */}
+              {(() => {
+                const model = EMBEDDING_MODELS.find(m => m.value === selectedModel);
+                if (!model?.hint) return null;
+                return (
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    {model.hint}
+                  </p>
+                );
+              })()}
             </div>
           </SettingsCard>
 

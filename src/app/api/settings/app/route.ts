@@ -20,6 +20,14 @@ const ALLOWED_KEYS = [
   'cli_enabled',
   // Feature announcement dismiss flags (persist across Electron restarts)
   'codepilot:announcement:v0.48-agent-engine',
+  // Knowledge base settings
+  'knowledge_enabled',
+  'knowledge_embedding_provider',
+  'knowledge_embedding_model',
+  'knowledge_injection_threshold',
+  'knowledge_limit',
+  // Assistant workspace path (used by both workspace and knowledge settings)
+  'assistant_workspace_path',
 ];
 
 export async function GET() {

@@ -58,7 +58,12 @@ export async function POST() {
     // Then generate embeddings
     const result = await reindexWorkspace(workspacePath, provider, model, { force: true });
 
-    return NextResponse.json({ success: true, ...result });
+    return NextResponse.json({
+      success: true,
+      fileCount: result.fileCount,
+      chunkCount: result.chunkCount,
+      effectiveModel: result.effectiveModel,
+    });
   } catch (e) {
     console.error('[knowledge] POST failed:', e);
     return NextResponse.json({ error: 'Indexing failed: ' + String(e) }, { status: 500 });
