@@ -1,0 +1,57 @@
+---
+title: 快速开始
+description: 开始使用 CodePilot — Claude Code 的桌面工作区。
+---
+
+# 快速开始
+
+CodePilot 是 Claude Code 的桌面工作区，把对话、服务商、MCP、技能、桥接和助理工作区整合到一个界面中。
+
+## 准备工作
+
+使用 CodePilot 之前，你需要：
+
+1. **Node.js 18+** — CodePilot 依赖 Node.js 运行 Claude Code CLI
+2. **Claude Code CLI** — Anthropic 官方的命令行工具（首次启动时可自动安装）
+3. **至少一个 API 密钥** — 来自 Anthropic、OpenRouter 或其他支持的服务商（详见[服务商配置](/zh/docs/providers)了解各服务商的获取和填写方式）
+
+## 安装与首次启动
+
+1. 从 [GitHub Releases](https://github.com/op7418/CodePilot/releases) 下载适合你平台的安装包（[详细安装指南](/zh/docs/installation)）
+2. 安装并启动 CodePilot
+3. 首次启动会进入**设置向导**，按提示完成：
+   - 检测并安装 Node.js（如未找到）
+   - 检测并安装 Claude Code CLI（如未找到）
+   - 配置至少一个 API 服务商
+
+## 界面概览
+
+CodePilot 的主界面由左侧导航栏和右侧工作区组成：
+
+| 导航项 | 功能 |
+|--------|------|
+| **对话** | 与 Claude 对话，支持代码 / 计划 / 问答三种模式 |
+| **MCP** | 管理 MCP 服务器，为 Claude 接入外部工具 |
+| **技能** | 浏览和管理技能（本地 + 市场） |
+| **桥接** | 将对话桥接到 Telegram、Discord、飞书、QQ |
+| **素材库** | 查看 Claude 生成的图片 |
+| **设置** | 服务商、CLI 配置、用量统计、助理工作区 |
+
+## 开始第一次对话
+
+1. 点击左侧**对话**，进入对话页面
+2. 在输入框中输入你的需求，按 Enter 发送
+3. Claude 会以流式输出回复，过程中可以看到工具调用和文件操作
+4. 使用输入框上方的模式切换器选择对话模式：
+   - **代码** — 默认模式，Claude 可以读写文件、执行命令
+   - **计划** — 规划模式，Claude 只分析和制定方案，不执行操作
+   - **问答** — 问答模式，Claude 只回答问题，不使用工具
+
+## 下一步
+
+- [安装指南](/zh/docs/installation) — 详细的安装与配置步骤
+- [服务商配置](/zh/docs/providers) — 配置多个 LLM 服务商
+- [MCP 插件](/zh/docs/mcp) — 通过 MCP 扩展 Claude 的能力
+- [技能](/zh/docs/skills) — 使用和管理技能
+- [消息桥接](/zh/docs/bridge) — 在手机上继续 Claude 对话
+- [助理工作区](/zh/docs/assistant-workspace) — 管理项目上下文和 Claude 行为

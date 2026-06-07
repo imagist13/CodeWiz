@@ -1,0 +1,143 @@
+---
+title: Feishu / Lark
+description: Configure the Feishu / Lark bridge.
+---
+
+# Feishu Bridge
+
+Chat with Claude through a Feishu (or Lark) app. Supports streaming card output, tool call progress display, permission approval buttons, and quick project switching.
+
+## Create a Feishu App
+
+### Domestic Edition (Feishu)
+
+1. Go to the [Feishu Open Platform](https://open.feishu.cn) and sign in with a developer account
+2. Click **Create Custom App**
+3. Fill in the app name and description
+4. On the app details page, under **Credentials & Basic Info**, obtain:
+   - **App ID** (format: `cli_xxxxxxxxxx`)
+   - **App Secret**
+
+### Add Capabilities
+
+5. In the left menu, select **Add Capabilities > Bot** to enable the bot capability
+
+### Events & Callbacks
+
+6. Under **Events & Callbacks**, configure:
+   - Select **Long Connection Mode** (WebSocket, no public IP or Encrypt Key / Verification Token required)
+   - Add event: `im.message.receive_v1` (receive messages)
+   - Add callback: `card.action.trigger` (card interaction callback, used for permission approval buttons and project selection)
+   - Save the configuration
+
+### Permissions
+
+7. Under **Permissions**, add the following permissions (you can paste the scope list in "Batch Enable"):
+
+**App Permissions (tenant scope):**
+
+| Permission | Description |
+|------------|-------------|
+| `im:message:send_as_bot` | Send messages as Bot |
+| `im:message:readonly` | Read message content |
+| `im:message.p2p_msg:readonly` | Receive DM messages |
+| `im:message.group_at_msg:readonly` | Receive group chat @messages |
+| `im:message:update` | Update messages (streaming card updates) |
+| `im:message.reactions:read` | Read message reactions |
+| `im:message.reactions:write_only` | Add/remove reactions (typing indicator) |
+| `im:chat:read` | Read group chat info |
+| `im:resource` | Download message resources (images, etc.) |
+| `cardkit:card:write` | Create and update streaming cards |
+| `cardkit:card:read` | Read card status |
+
+The following permissions are optional, for future platform capability extensions:
+
+| Permission | Description |
+|------------|-------------|
+| `im:chat:update` | Update group chat settings |
+| `im:message.pins:read` | Read pinned messages |
+| `im:message.pins:write_only` | Pin/unpin messages |
+| `im:message:recall` | Recall messages |
+| `im:message:send_multi_users` | Send messages to multiple users |
+| `im:message:send_sys_msg` | Send system messages |
+| `contact:contact.base:readonly` | Read contacts basic info |
+| `docx:document:readonly` | Read document content |
+| `application:application:self_manage` | App self-management |
+
+**User Permissions (user scope)** — If you need user-level document/calendar/task capabilities, add the corresponding permissions as needed. See the Feishu Open Platform documentation for the full list.
+
+### Publish the App
+
+8. **Publish the app** — submit for review or self-approve
+
+### International Edition (Lark)
+
+The process is the same as the domestic edition, but performed on [Lark Developer](https://open.larksuite.com). When configuring in CodePilot, select the domain as **Lark**.
+
+## Configure in CodePilot
+
+1. Click **Bridge** in the sidebar, then switch to the **Feishu** tab
+2. Select domain: **Feishu** (domestic) or **Lark** (international)
+3. Enter the **App ID** and **App Secret**
+4. Click **Test Connection** to verify the credentials
+5. Configure Access & Behavior:
+   - **DM Policy** — Control who can DM the Bot (Open / Pairing / Allowlist / Disabled)
+   - **Allow From** — Enter Feishu open_id values to restrict allowed users, `*` for all
+   - **Group Policy** — Control how the Bot responds in group chats (Open / Allowlist / Disabled)
+   - **Require @mention** — When enabled, the Bot only responds to messages that @mention it in group chats
+   - **Thread Sessions** — When enabled, different threads have independent conversation contexts
+6. Click **Save**
+
+## Enable the Bridge
+
+1. Go back to the Bridge overview page
+2. Make sure the **Feishu** channel toggle is on
+3. Make sure the Bridge master switch is on
+4. Click **Start**
+
+## Message Format
+
+The Feishu bridge uses streaming cards for Claude's replies:
+
+- **Streaming cards** — Real-time display of the generation process, with Markdown rendering (code highlighting, tables, lists, etc.)
+- **Tool call progress** — Real-time display of 🔄 Running / ✅ Complete / ❌ Error
+- **Thinking state** — Shows 💭 Thinking... before text arrives
+- **Footer info** — Status indicator + elapsed time
+- **Permission approval** — Inline button cards, click to Allow / Deny
+- **Project switching** — `/cwd` command shows a project selector card
+
+Command responses and error messages use rich text messages (Post) with Markdown formatting.
+
+## Troubleshooting
+
+### Test connection failed
+
+1. Confirm the App ID and App Secret are correct
+2. Confirm the app has been published (review approved)
+3. Confirm you selected the correct domain (domestic vs. international)
+
+### Bot not responding in group chats
+
+1. Confirm the bot capability has been added
+2. Confirm the `im:message.group_at_msg:readonly` permission has been granted
+3. Confirm the group policy is not set to "Disabled"
+4. If the policy is set to "Allowlist", confirm the group chat ID is in the allowed list
+5. If "Require @mention" is enabled, make sure the message @mentions the Bot
+
+### Bot not responding in DMs
+
+1. Confirm the `im:message.p2p_msg:readonly` permission has been granted
+2. Confirm the app has been published
+3. Search for the Bot by name in Feishu and start a DM
+
+### Permission buttons not working
+
+1. Confirm you have added `card.action.trigger` callback under **Events & Callbacks**
+2. Confirm you are using **Long Connection Mode** (WSClient), not HTTP Webhook mode
+3. Check CodePilot logs for `[feishu/gateway] handleEventData type: card` output
+
+### Streaming cards not showing
+
+1. Confirm the `cardkit:card:write` and `cardkit:card:read` permissions have been granted
+2. Confirm the app has been re-published (permission changes require re-publishing)
+3. Check CodePilot logs for `[card-controller]` related output

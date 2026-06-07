@@ -1,0 +1,203 @@
+---
+title: 服务商配置
+description: 配置 LLM 服务商以驱动 CodePilot。
+---
+
+# 服务商配置
+
+CodePilot 支持多种 LLM 服务商。你可以同时配置多个服务商，在不同对话中使用不同的模型。
+
+## 认证方式概览
+
+CodePilot 有两种获取 API 凭据的途径：
+
+### 1. CLI 环境认证（自动检测）
+
+如果你在 shell 环境中设置了 `ANTHROPIC_API_KEY` 或 `ANTHROPIC_AUTH_TOKEN` 环境变量，CodePilot 启动时会**自动检测**并作为内置服务商使用。设置中心也会检查这些凭据，如果检测到会自动将服务商步骤标记为已完成。
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+> **注意：** 通过 `claude config set` 或 Claude Code 的 `/config` 命令切换的配置**不会被 CodePilot 识别**。CodePilot 只读取 shell 环境变量，不共享 Claude Code CLI 的内部配置。如果你在 CLI 中通过 `cc switch` 或类似方式切换了账号/密钥，需要在 CodePilot 的 **设置 > 服务商** 中重新手动配置对应的密钥。
+
+> 修改环境变量后需要**重启 CodePilot** 才能生效。
+
+### 2. 手动添加服务商
+
+在 **设置 > 服务商** 中手动添加 API 密钥。这些凭据存储在 CodePilot 本地数据库中，与 CLI 环境相互独立。
+
+适合需要使用多个服务商、或使用非 Anthropic 服务的场景。
+
+### 优先级
+
+当发送消息时，CodePilot 按以下顺序确定使用哪个服务商：
+
+1. **对话指定** — 对话头部手动选择的服务商
+2. **全局默认** — 在服务商列表中标记为"默认"的服务商
+3. **环境变量** — 如果没有配置任何服务商，回退到 shell 环境中的凭据
+
+## 支持的服务商
+
+### Anthropic（官方）
+
+直接连接 Anthropic API，使用 Claude 模型（Opus、Sonnet、Haiku）。
+
+- **认证**：API 密钥
+- **说明**：如果你只使用 Anthropic，通过 CLI 环境认证即可，无需手动添加
+
+### Anthropic（第三方兼容）
+
+连接兼容 Anthropic API 格式的第三方端点。
+
+- **认证**：API 密钥或 Auth Token + 自定义基础 URL。添加时需要选择认证类型：
+  - **API Key** — 服务商提供的密钥以 `sk-` 开头，或者文档中明确标注为 API Key。大多数服务商使用这种方式，对应环境变量 `ANTHROPIC_API_KEY`
+  - **Auth Token** — 服务商提供的是 OAuth Token 或其他形式的访问令牌，通常不以 `sk-` 开头。部分订阅制服务（如 Kimi Coding Plan、火山引擎 Ark）使用这种方式，对应环境变量 `ANTHROPIC_AUTH_TOKEN`
+  - 如果不确定，先尝试 API Key；如果认证失败，切换为 Auth Token 再试
+- **模型映射**：部分第三方服务商要求使用自己的模型名称（而非 Anthropic 原始模型名）。如果遇到模型不可用的错误，点击配置表单底部的 **更多选项**，在 **模型名称** 字段中填写该服务商要求的模型标识符
+
+### 国内服务商
+
+CodePilot 内置了国内主流服务商的配置预设，选择后自动填充基础 URL 和默认模型：
+
+| 服务商 | 说明 | 计费模式 |
+|--------|------|----------|
+| **智谱 GLM（国内/国际）** | 智谱 AI GLM 系列 | Coding Plan（积分制） |
+| **Kimi Coding Plan** | 月之暗面 Kimi 编程版 | 按量付费 |
+| **Moonshot** | 月之暗面 Moonshot API | 按量付费 |
+| **MiniMax（国内/国际）** | MiniMax M2.7 | Token Plan |
+| **DeepSeek** | DeepSeek V4 Pro / V4 Flash（Anthropic 兼容端点） | 按量付费 |
+| **火山引擎 Ark** | 字节跳动火山引擎（豆包、GLM、DeepSeek、Kimi） | Coding Plan |
+| **小米 MiMo** | 小米 MiMo-V2.5-Pro（按量付费或 Token Plan） | 按量 / Token Plan |
+| **阿里云百炼 Coding Plan** | 阿里云（通义、GLM、Kimi、MiniMax） | Coding Plan |
+
+在 CodePilot 中添加国内服务商时，系统会自动处理认证方式，你只需填写对应平台提供的密钥。每个服务商卡片上都有直接获取 API Key 的链接。
+
+> **各服务商注意事项：**
+> - **智谱 GLM**：高峰时段（14:00–18:00 UTC+8）消耗 3 倍积分
+> - **Kimi / Moonshot**：`tool_search` 已自动关闭以避免 400 错误
+> - **小米 MiMo**：不支持 Thinking 模式
+> - **阿里云百炼**：必须使用 Coding Plan 专用 Key（以 `sk-sp-` 开头），普通 DashScope Key 无法使用
+> - **火山引擎 Ark**：需先在控制台激活 Endpoint 后才能使用
+
+### OpenRouter
+
+通过 OpenRouter 统一接口访问多家模型服务商（Anthropic、OpenAI、Google、Meta 等）。
+
+- **认证**：API 密钥
+- **优势**：一个密钥访问多种模型，自动路由和故障转移
+
+### AWS Bedrock
+
+通过 AWS 基础设施使用 Claude。
+
+- **认证**：环境变量方式，需要 `AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`
+- **说明**：在 CodePilot 中添加后，系统会读取你的 AWS 环境变量进行认证。不需要在界面中填写密钥。
+
+### Google Vertex
+
+通过 Google Cloud 使用 Claude 和 Gemini。
+
+- **认证**：环境变量方式，需要 Google Cloud 服务账号凭证
+- **说明**：与 Bedrock 类似，通过环境变量认证
+
+### Google Gemini (Image)
+
+Gemini 图片生成 API，供设计 Agent 使用。
+
+- **认证**：API 密钥
+- **说明**：这是专门用于图片生成的服务商，不用于文本对话
+
+### Ollama（本地模型）
+
+通过 Ollama 运行本地模型。Ollama 提供了 Anthropic 兼容的 API，CodePilot 可以直接连接。
+
+- **认证**：无需 API 密钥（系统自动处理）
+- **前提**：需要先安装并启动 Ollama
+- **详细配置**：参见下方 [Ollama 配置指南](#ollama-配置指南)
+
+### LiteLLM
+
+统一代理，支持 100+ LLM 服务商。
+
+- **认证**：API 密钥 + 基础 URL
+
+## 添加服务商
+
+1. 打开 **设置 > 服务商**
+2. 点击 **添加服务商**
+3. 选择服务商类型（或国内预设）
+4. 填写凭据：
+   - **API 密钥类**：粘贴密钥
+   - **自定义端点**：还需填写基础 URL
+   - **环境变量类**（Bedrock / Vertex）：确保环境变量已设置
+5. 选择默认模型
+6. 点击 **保存**
+
+## 切换服务商
+
+- 在对话头部的服务商选择器中选择
+- 每个对话会记住所用的服务商
+- 可以在对话中途切换，切换后的消息使用新服务商
+- 在服务商列表中点击 **设为默认** 可设置全局默认
+
+## 常见问题
+
+### 已设置环境变量但 CodePilot 没有检测到
+
+- 确认环境变量在 CodePilot 启动时的 shell 环境中可用
+- 如果通过 `.zshrc` / `.bashrc` 设置，确保修改后**重启了 CodePilot**（不是刷新）
+- macOS 通过 Launchpad 启动的应用可能不继承终端环境变量，建议从终端启动或使用手动添加服务商
+
+### API 密钥有效但请求失败
+
+- 检查账户是否有余额
+- 检查密钥是否有模型访问权限
+- 国内服务商检查网络是否可达对应 API 端点
+- AWS Bedrock 检查 IAM 权限是否包含 `bedrock:InvokeModel`
+
+### 切换服务商后对话异常
+
+- 不同服务商的上下文窗口大小不同，切换后可能因上下文过长导致报错
+- 部分服务商不支持 Claude Code 的所有功能（如工具使用），切换后某些操作可能不可用
+
+### 如何使用本地模型
+
+推荐使用 **Ollama** 预设，参见下方 [Ollama 配置指南](#ollama-配置指南)。也可以选择 **LiteLLM** 接入其他本地推理框架（如 vLLM、LM Studio）。
+
+---
+
+## Ollama 配置指南
+
+通过 Ollama 可以在本地运行开源模型，无需 API 密钥，完全免费。以下以 `gemma4:e4b` 为例演示完整配置流程。
+
+### 第一步：安装 Ollama 并运行模型
+
+```bash
+# 安装 Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# 拉取并运行模型（会自动启动 Ollama 服务）
+ollama run gemma4:e4b
+```
+
+运行后模型会进入交互对话模式，确认能正常回复后按 `Ctrl+D` 退出即可。Ollama 服务会在后台继续运行。
+
+> **模型名称很重要**：在 CodePilot 中填写的模型名称必须与 `ollama list` 显示的名称**完全一致**（包括冒号后的标签部分）。例如 `gemma4:e4b`，不能只写 `gemma4`。
+
+更多模型和用法参见 [Ollama 官方文档](https://docs.ollama.com/)。
+
+### 第二步：在 CodePilot 中添加 Ollama
+
+1. 打开 **设置 > 服务商**
+2. 在服务商列表底部找到 **Ollama**，点击 **+ 连接**
+3. 配置以下信息：
+   - **基础 URL**：保持默认 `http://localhost:11434`（如果 Ollama 运行在其他端口或远程机器上，修改为对应地址）
+   - **模型名称**：填写 `gemma4:e4b`（必须与 `ollama list` 中的名称完全一致）
+4. 点击 **保存**
+
+### 第三步：开始对话
+
+1. 新建对话
+2. 在对话顶部的服务商选择器中切换到 **Ollama**
+3. 发送消息，模型会在本地运行推理

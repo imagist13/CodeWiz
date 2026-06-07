@@ -1,0 +1,73 @@
+---
+title: MCP Plugins
+description: Connect external tools to Claude via the Model Context Protocol.
+---
+
+# MCP Plugins
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open standard for connecting AI assistants to external tools. CodePilot has a built-in MCP client that supports connecting to any MCP server to extend Claude's capabilities.
+
+## What is MCP?
+
+MCP servers provide Claude with additional tools, such as:
+
+- **File System** — Read/write files, search directories
+- **Database** — Query databases directly
+- **API Integrations** — Connect to external services like GitHub, Jira, Slack
+- **Development Tools** — Run tests, lint code, manage dependencies
+- **Custom Tools** — Build any tool you need
+
+## Managing MCP Servers
+
+Click **MCP** in the sidebar to open the management page. The page provides two views:
+
+### List View
+
+Displays all configured MCP servers as cards, each showing:
+
+- Server name
+- Connection status (Connected / Disconnected / Error)
+- List of tools provided
+
+### JSON Editor
+
+Directly edit the MCP configuration JSON file — useful for bulk configuration or importing settings from other tools.
+
+## Adding an MCP Server
+
+1. Click **Add Server** on the MCP page
+2. Fill in the configuration:
+   - **Name** — A descriptive name for the server
+   - **Transport Type** — Select the connection method:
+     - **stdio** — Local process communicating via standard input/output (most common)
+     - **SSE** — Connect to a remote server via Server-Sent Events
+     - **HTTP (Streamable)** — Connect via HTTP streaming
+   - **Command** (stdio type) — The command to start the server, e.g., `npx @modelcontextprotocol/server-filesystem`
+   - **Arguments** — Command-line arguments
+   - **URL** (SSE / HTTP type) — The remote server address
+   - **Environment Variables** — Environment variables the server needs (API keys, etc.)
+3. After saving, the server will start automatically
+
+## Using MCP Tools
+
+Once an MCP server is connected, its tools automatically become available to Claude. Claude will call these tools as needed while processing your requests.
+
+You can view the specific tool list for each server on the MCP page.
+
+## Popular MCP Servers
+
+| Server | Purpose |
+|--------|---------|
+| `@modelcontextprotocol/server-filesystem` | File system access |
+| `@modelcontextprotocol/server-github` | GitHub integration |
+| `@modelcontextprotocol/server-slack` | Slack integration |
+| `@anthropic-ai/mcp-server-fetch` | Web fetching |
+
+More MCP servers can be found in the [official MCP repository](https://github.com/modelcontextprotocol/servers) and the community.
+
+## Troubleshooting
+
+- **Server won't connect** — Check that the command is correct and the required npm package is installed
+- **Tools not appearing** — Try disconnecting and reconnecting the server
+- **Permission errors** — Ensure the MCP server has access to the required resources
+- **SSE/HTTP connection fails** — Check that the URL is correct and the server is running

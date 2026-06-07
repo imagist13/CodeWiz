@@ -1,0 +1,122 @@
+---
+title: Installation
+description: How to install and set up CodePilot on your system.
+---
+
+## System Requirements
+
+- **macOS** 12+ (Apple Silicon or Intel)
+- **Windows** 10+ (64-bit)
+- **Node.js** 18 or later
+- **Claude Code CLI** (will be installed automatically if not present)
+
+## Download
+
+<DownloadButton label="Download Latest Release" />
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/op7418/CodePilot/releases).
+
+| Platform | Format | Architecture |
+|----------|--------|-------------|
+| macOS | DMG | arm64 (Apple Silicon) + x64 (Intel) |
+| Windows | NSIS Installer | x64 |
+
+## Installation Steps
+
+### macOS
+
+1. Download the `.dmg` file for your architecture
+2. Open the DMG and drag CodePilot to your Applications folder
+3. Launch CodePilot from Applications
+4. On first launch, macOS may ask you to confirm opening an app from an unidentified developer — go to **System Settings > Privacy & Security** and click "Open Anyway"
+
+### Windows
+
+1. Download the `.exe` installer
+2. Run the installer and follow the prompts
+3. CodePilot will be available in your Start menu
+
+## First Launch & Setup Center
+
+On first launch, CodePilot automatically opens the **Setup Center** — a guided setup overlay that walks you through three prerequisites:
+
+### 1. Claude Code CLI Detection
+
+The Setup Center checks whether the Claude Code CLI is installed and accessible.
+
+- **Detected** — Shows version, installation type (native/npm/bun/homebrew), and binary path. You're good to go.
+- **Not found** — Provides the install command for your platform:
+  - macOS/Linux: `curl -fsSL https://claude.ai/install.sh | bash`
+  - Windows: `irm https://claude.ai/install.ps1 | iex`
+  - After installing, click **Re-detect** to verify.
+- **Multiple installations detected** — If CodePilot finds more than one Claude Code binary (e.g., one installed via npm and another natively), it shows a warning with cleanup instructions. See [Claude Code Conflicts](#claude-code-conflicts) below.
+- **Git not found (Windows)** — Claude Code requires Git. The Setup Center provides step-by-step instructions for installing Git for Windows.
+
+You can **skip** any step and continue — the app will still work if the CLI is available in your PATH.
+
+### 2. API Provider Configuration
+
+The Setup Center checks for available API credentials in three locations:
+
+1. **Database providers** — Any providers you've manually configured in Settings
+2. **Environment variables** — `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` set in your shell
+3. **App settings** — Legacy `anthropic_auth_token` stored from previous versions
+
+If credentials are found, the card is automatically marked as complete. Otherwise, you can click **Add Provider** to go to Settings, or **Skip** to configure later.
+
+> **Note:** Skipping the provider step doesn't mean you have a working provider. If you try to send a message without any configured provider, CodePilot will prompt you to set one up.
+
+### 3. Default Project Directory
+
+Select a default working directory for new conversations. The Setup Center shows your recent projects (if any) as quick-select chips, or you can browse for a folder.
+
+This directory is used as the fallback when creating new conversations. You can always change it per-conversation.
+
+### Reopening the Setup Center
+
+You can reopen the Setup Center anytime from **Settings > General > Initial Setup Guide**.
+
+## Claude Code Conflicts
+
+If multiple Claude Code installations exist on your system, they can cause version conflicts, unexpected behavior, or permission errors. Common scenarios:
+
+- Installed via `npm install -g` **and** the native installer
+- Old npm installation left behind after switching to the native installer
+- Multiple package managers (npm + homebrew, npm + bun)
+
+### How CodePilot detects conflicts
+
+When the Setup Center (or the connection status indicator) detects Claude Code, it also scans for other installations. If multiple are found, it shows:
+
+1. **Which binary is currently in use** — path, version, and installation type
+2. **Other installations found** — each with its path and type
+3. **Uninstall commands** — specific to each installation type:
+
+| Installation Type | Uninstall Command |
+|---|---|
+| npm | `npm uninstall -g @anthropic-ai/claude-code` |
+| Bun | `bun remove -g @anthropic-ai/claude-code` |
+| Homebrew | `brew uninstall --cask claude-code` |
+| Native | Remove the binary at the displayed path |
+
+After removing the conflicting installations, click **Re-detect** to verify only one remains.
+
+### Recommended installation method
+
+The **native installer** (`curl -fsSL https://claude.ai/install.sh | bash`) is recommended. It doesn't depend on Node.js/npm being in your PATH, avoids version conflicts with other npm packages, and receives the fastest updates.
+
+## Configuring an API Provider
+
+CodePilot needs at least one API provider to function. Go to **Settings** and open the **Providers** section to add one:
+
+- **Anthropic** — Direct API access to Claude models
+- **Custom API (OpenAI-compatible)** — Any OpenAI-compatible endpoint, including local LLMs
+- **OpenRouter** — Access multiple providers via OpenRouter
+- **AWS Bedrock** — Claude via AWS
+- **Google Vertex** — Claude/Gemini via Google Cloud
+
+Enter your API key and select a default model. You can configure multiple providers and switch between them.
+
+## Updating
+
+CodePilot includes an auto-updater. When a new version is available, you'll see a notification in the app. You can also manually check for updates in the **General** section of **Settings**.

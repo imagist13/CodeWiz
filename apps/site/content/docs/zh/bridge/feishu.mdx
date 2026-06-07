@@ -1,0 +1,143 @@
+---
+title: 飞书
+description: 配置飞书 / Lark 桥接。
+---
+
+# 飞书桥接
+
+通过飞书（或 Lark）应用与 Claude 对话。支持流式卡片输出、工具调用进度显示、权限审批按钮、项目快捷切换。
+
+## 创建飞书应用
+
+### 国内版（飞书）
+
+1. 前往 [飞书开放平台](https://open.feishu.cn)，登录开发者账号
+2. 点击 **创建企业自建应用**
+3. 填写应用名称和描述
+4. 进入应用详情页，在 **凭证与基础信息** 中获取：
+   - **App ID**（格式：`cli_xxxxxxxxxx`）
+   - **App Secret**
+
+### 添加应用能力
+
+5. 在左侧选择 **添加应用能力 > 机器人**，启用机器人功能
+
+### 事件与回调
+
+6. 在 **事件与回调** 中配置：
+   - 选择 **使用长连接模式**（WebSocket，无需公网地址或 Encrypt Key / Verification Token）
+   - 添加事件：`im.message.receive_v1`（接收消息）
+   - 添加回调：`card.action.trigger`（卡片回传交互回调，用于权限审批按钮和项目选择）
+   - 保存配置
+
+### 权限管理
+
+7. 在 **权限管理** 中，批量添加以下权限（可在「批量开通」中粘贴 scope 列表）：
+
+**应用权限（tenant scope）：**
+
+| 权限 | 说明 |
+|------|------|
+| `im:message:send_as_bot` | 以 Bot 身份发送消息 |
+| `im:message:readonly` | 读取消息内容 |
+| `im:message.p2p_msg:readonly` | 接收私聊消息 |
+| `im:message.group_at_msg:readonly` | 接收群聊 @消息 |
+| `im:message:update` | 更新消息（流式卡片更新） |
+| `im:message.reactions:read` | 读取消息表情回复 |
+| `im:message.reactions:write_only` | 添加/删除表情回复（typing 指示器） |
+| `im:chat:read` | 读取群聊信息 |
+| `im:resource` | 下载消息中的资源（图片等） |
+| `cardkit:card:write` | 创建和更新流式卡片 |
+| `cardkit:card:read` | 读取卡片状态 |
+
+以下权限为可选，用于未来平台能力扩展：
+
+| 权限 | 说明 |
+|------|------|
+| `im:chat:update` | 更新群聊设置 |
+| `im:message.pins:read` | 读取置顶消息 |
+| `im:message.pins:write_only` | 置顶/取消置顶消息 |
+| `im:message:recall` | 撤回消息 |
+| `im:message:send_multi_users` | 向多人发送消息 |
+| `im:message:send_sys_msg` | 发送系统消息 |
+| `contact:contact.base:readonly` | 读取通讯录基础信息 |
+| `docx:document:readonly` | 读取文档内容 |
+| `application:application:self_manage` | 应用自管理 |
+
+**用户权限（user scope）** — 如需用户级别的文档/日历/任务等能力，可按需添加对应权限。完整列表请参考飞书开放平台文档。
+
+### 发布应用
+
+8. **发布应用** — 提交审核或自审通过
+
+### 国际版（Lark）
+
+流程与国内版相同，但在 [Lark Developer](https://open.larksuite.com) 上操作。在 CodePilot 配置时选择域名为 **Lark**。
+
+## 在 CodePilot 中配置
+
+1. 点击侧边栏 **桥接**，切换到 **飞书** 页面
+2. 选择域名：**飞书**（国内版）或 **Lark**（国际版）
+3. 填写 **App ID** 和 **App Secret**
+4. 点击 **测试连接** 验证凭据
+5. 配置访问与行为：
+   - **私信策略** — 控制谁可以向 Bot 发私信（开放 / 配对 / 白名单 / 禁用）
+   - **允许来源** — 填写飞书 open_id 限制可用用户，`*` 表示不限
+   - **群聊策略** — 控制 Bot 在群聊中的响应方式（开放 / 白名单 / 禁用）
+   - **需要 @提及** — 开启后群聊中只响应 @Bot 的消息
+   - **话题会话** — 启用后不同话题拥有独立的对话上下文
+6. 点击 **保存**
+
+## 启用桥接
+
+1. 回到桥接总览页面
+2. 确保 **飞书** 渠道开关已打开
+3. 确保桥接主开关已开启
+4. 点击 **启动**
+
+## 消息格式
+
+飞书桥接使用流式卡片输出 Claude 的回复：
+
+- **流式卡片** — 实时显示生成过程，支持 Markdown 渲染（代码高亮、表格、列表等）
+- **工具调用进度** — 实时显示 🔄 Running / ✅ Complete / ❌ Error
+- **Thinking 状态** — 在文本到达前显示 💭 Thinking...
+- **页脚信息** — 状态指示 + 耗时显示
+- **权限审批** — 内联按钮卡片，点击即可 Allow / Deny
+- **项目切换** — `/cwd` 命令弹出项目选择器卡片
+
+命令响应和错误消息使用富文本消息（Post）+ Markdown 格式。
+
+## 故障排除
+
+### 测试连接失败
+
+1. 确认 App ID 和 App Secret 正确
+2. 确认应用已发布（审核通过）
+3. 确认选择了正确的域名（国内版 vs 国际版）
+
+### Bot 不响应群聊
+
+1. 确认已添加机器人能力
+2. 确认已申请 `im:message.group_at_msg:readonly` 权限
+3. 确认群组策略不是"禁用"
+4. 如果策略为"白名单"，确认群聊 ID 在允许列表中
+5. 如果开启了"需要 @提及"，确保消息中 @了 Bot
+
+### Bot 不响应私聊
+
+1. 确认已申请 `im:message.p2p_msg:readonly` 权限
+2. 确认应用已发布
+3. 在飞书中搜索 Bot 名称，发起私聊
+
+### 权限按钮无反应
+
+1. 确认已在 **事件与回调** 中添加了 `card.action.trigger` 回调
+2. 确认使用的是 **长连接模式**（WSClient），非 HTTP Webhook 模式
+3. 检查 CodePilot 日志中是否有 `[feishu/gateway] handleEventData type: card` 输出
+
+### 流式卡片不显示
+
+1. 确认已申请 `cardkit:card:write` 和 `cardkit:card:read` 权限
+2. 确认应用已重新发布（权限变更后需要重新发布）
+3. 检查 CodePilot 日志中是否有 `[card-controller]` 相关输出

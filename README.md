@@ -1,300 +1,174 @@
-# CodeWiz — AI Desktop Coding Assistant
+# CodeWiz
 
-<p align="center">
-  <a href="https://github.com/codewiz/codewiz/stargazers"><img src="https://img.shields.io/github/stars/codewiz/codewiz?style=social" alt="Stars"></a>
-  <a href="https://github.com/codewiz/codewiz/network/members"><img src="https://img.shields.io/github/forks/codewiz/codewiz?style=social" alt="Forks"></a>
-  <img src="https://img.shields.io/github/license/codewiz/codewiz?style=flat-square" alt="License">
-</p>
+**The AI Agent desktop client that puts you in control** -- connect any AI provider, extend with MCP & skills, automate tasks, and let your assistant learn your workflow.
 
-<p align="center">
-  <strong>CodeWiz</strong> is a cross-platform desktop AI coding assistant. Chat with AI, execute code, and manage your projects — all in one app.
-</p>
-
-<p align="center">
-  <a href="#-quick-start"><strong>Quick Start</strong></a>&nbsp;&nbsp;·&nbsp;
-  <a href="#-features"><strong>Features</strong></a>&nbsp;&nbsp;·&nbsp;
-  <a href="#-tech-stack"><strong>Tech Stack</strong></a>&nbsp;&nbsp;·&nbsp;
-  <a href="#-project-structure"><strong>Project Structure</strong></a>&nbsp;&nbsp;·&nbsp;
-  <a href="#-skills-marketplace"><strong>Skills</strong></a>&nbsp;&nbsp;·&nbsp;
-  <a href="#-development"><strong>Development</strong></a>
-</p>
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()]()
+[![License](https://img.shields.io/badge/license-BSL--1.1-orange)]()
 
 ---
 
 ## What is CodeWiz?
 
-CodeWiz is a desktop AI coding assistant built with Electron and FastAPI. It brings together an intelligent AI chat interface, a code execution engine, and a rich skills marketplace — all running locally on your machine.
+CodeWiz is a cross-platform desktop application that brings together every major AI provider under one roof. Whether you're using Claude, GPT, Gemini, DeepSeek, or a local model via Ollama, CodeWiz gives you a single, powerful interface to interact with all of them -- without losing your conversation history, context, or settings.
 
-With Hermes you can:
+But CodeWiz goes beyond chat. It's a fully capable AI agent platform:
 
-- Chat with AI models (OpenAI GPT-4o, Anthropic Claude, DeepSeek)
-- Execute code in a sandboxed environment directly from the desktop
-- Browse and install skills from the marketplace to extend AI capabilities
-- Manage conversations, repositories, and projects from a polished UI
-- Get real-time streaming responses via SSE
-
----
-
-## Features
-
-### AI Chat Interface
-SSE-powered streaming chat with support for multiple LLM providers. Multi-round conversation memory with automatic context management.
-
-### Code Execution Engine
-Run Python code directly within CodeWiz. The execution harness leverages tree-sitter for code analysis and supports a growing library of execution tools.
-
-### Skills Marketplace
-18 built-in skills covering the full development lifecycle:
-
-| Category | Skills |
-|----------|--------|
-| **Code Quality** | Code Auditor, Test Fixing, Review Implementing |
-| **Code Transformation** | Code Refactor, Code Transfer, File Operations |
-| **Documentation** | Codebase Documenter, Technical Doc Creator, Flowchart Creator, Timeline Creator, Architecture Diagram Creator, Dashboard Creator |
-| **Project Management** | Feature Planning, Project Bootstrapper, Ensemble Solving, Conversation Analyzer |
-| **Automation** | Git Pushing, Code Execution |
-
-### Multi-LLM Support
-Switch between OpenAI GPT-4o, Anthropic Claude, and DeepSeek through a unified interface. Configure your preferred provider and model in settings.
-
-### Desktop Integration
-Built on Electron with native OS integration, CodeWiz runs as a native desktop application on Windows (with macOS/Linux support).
+- **Multi-provider**: Switch models mid-conversation without losing context
+- **Remote Bridge**: Control CodeWiz from Telegram, Feishu, Discord, QQ, or WeChat
+- **MCP + Skills**: Extend capabilities with MCP servers and reusable skills
+- **Task Scheduler**: Automate recurring AI tasks with cron expressions
+- **Generative UI**: AI creates interactive dashboards and widgets rendered live in the app
+- **Persistent Memory**: Your assistant learns your preferences and remembers context
 
 ---
 
-## Tech Stack
+## Download
 
-```
-┌─────────────────────────────────────────────┐
-│              Electron Desktop App             │
-│         React + TypeScript + Zustand         │
-│             Tailwind CSS + Ant Design         │
-└────────────────────┬────────────────────────┘
-                     │ HTTP / SSE
-                     ▼
-┌─────────────────────────────────────────────┐
-│              FastAPI Backend                  │
-│         Python 3.11+ · SQLAlchemy 2.0         │
-│              SQLite (aiosqlite)               │
-│         LangChain · tree-sitter              │
-└─────────────────────────────────────────────┘
-```
-
-| Layer | Technology |
-|-------|------------|
-| **Desktop Framework** | Electron 31.x + electron-vite |
-| **Frontend** | React 18, TypeScript 5, Tailwind CSS 4, Ant Design 6 |
-| **State Management** | Zustand 4 |
-| **Backend** | FastAPI (Python 3.11+), Uvicorn, SQLAlchemy 2.0, aiosqlite |
-| **AI / LLM** | LangChain (OpenAI, Anthropic, DeepSeek adapters) |
-| **Code Analysis** | tree-sitter-languages |
-| **Build** | electron-builder, pnpm |
+| Platform | Installer | Architectures |
+|---|---|---|
+| macOS | [.dmg](https://github.com/imagist13/CodeWiz/releases/latest) | arm64 / x64 |
+| Windows | [.exe](https://github.com/imagist13/CodeWiz/releases/latest) | x64 + arm64 |
+| Linux | [AppImage](https://github.com/imagist13/CodeWiz/releases/latest) · [.deb](https://github.com/imagist13/CodeWiz/releases/latest) · [.rpm](https://github.com/imagist13/CodeWiz/releases/latest) | x64 + arm64 |
 
 ---
 
-## Project Structure
+## Features at a Glance
 
-```
-CodeWiz/
-├── electron/                    # Electron desktop app
-│   └── src/
-│       ├── main/               # Main process
-│       ├── preload/            # Preload scripts (IPC bridge)
-│       └── renderer/           # React UI
-│           ├── components/     # React components
-│           ├── pages/         # App pages (Chat, Settings, etc.)
-│           ├── store/          # Zustand state stores
-│           ├── hooks/          # Custom React hooks
-│           ├── utils/         # API client, helpers
-│           └── styles/        # Global styles, theme
-│
-├── backend/                    # Python FastAPI backend
-│   ├── api/                    # API route handlers
-│   │   ├── chat.py             # Chat & SSE streaming
-│   │   ├── users.py            # User authentication
-│   │   ├── files.py            # File operations
-│   │   ├── conversations.py    # Conversation management
-│   │   ├── tasks.py            # Task management
-│   │   └── config.py           # Configuration endpoints
-│   ├── core/                  # Core utilities
-│   │   ├── config.py           # App configuration
-│   │   ├── security.py         # JWT auth, password hashing
-│   │   ├── database.py        # SQLAlchemy setup
-│   │   └── models.py           # ORM models
-│   ├── runcore/               # Code execution engine
-│   │   ├── agent.py           # Agent execution loop
-│   │   ├── llm/               # LLM adapters (OpenAI, Anthropic, DeepSeek)
-│   │   ├── memory/             # Context management & compression
-│   │   └── tools/              # Tool registry and implementations
-│   ├── skills/                # Skills system
-│   │   └── marketplace/        # Built-in skills (18 total)
-│   │       ├── code-auditor/
-│   │       ├── code-execution/
-│   │       ├── code-refactor/
-│   │       ├── code-transfer/
-│   │       ├── codebase-documenter/
-│   │       ├── conversation-analyzer/
-│   │       ├── dashboard-creator/
-│   │       ├── ensemble-solving/
-│   │       ├── feature-planning/
-│   │       ├── file-operations/
-│   │       ├── flowchart-creator/
-│   │       ├── git-pushing/
-│   │       ├── project-bootstrapper/
-│   │       ├── review-implementing/
-│   │       ├── technical-doc-creator/
-│   │       ├── test-fixing/
-│   │       ├── timeline-creator/
-│   │       └── architecture-diagram-creator/
-│   ├── cron/                  # Scheduled tasks
-│   └── main.py                # FastAPI app entry point
-│
-├── config/                    # Configuration files
-│   ├── config_core.json       # Core settings
-│   └── user_defaults.json     # Default user preferences
-│
-├── data/                      # Runtime data (user data, databases)
-├── build/                     # App icons and build resources
-└── dist/                      # Build output (generated)
-```
+### AI Providers (20+)
 
----
+| Category | Providers |
+|---|---|
+| Direct API | Anthropic, Anthropic Third-party |
+| Cloud | AWS Bedrock, Google Vertex AI |
+| Chinese AI | Zhipu GLM, Kimi, Moonshot, MiniMax, DeepSeek, Volcengine Ark, Xiaomi MiMo, Aliyun Bailian |
+| Open-source routing | OpenRouter |
+| Local / Self-hosted | Ollama, LiteLLM |
+| Media | Google Gemini (image generation) |
 
-## Skills Marketplace
+### Conversation & Interaction
 
-CodeWiz ships with 18 built-in skills:
+- **Three modes**: Code, Plan, Ask
+- **Reasoning control**: Low / Medium / High / Max + extended thinking
+- **Session control**: Pause, resume, rewind to any checkpoint, archive
+- **Split-screen**: Side-by-side dual sessions
+- **Attachments**: Files and images with multimodal vision support
+- **Slash commands**: `/help`, `/clear`, `/cost`, `/compact`, `/doctor`, `/review` and more
+- **Integrated terminal**: Full terminal emulator inside the app
+- **Git panel**: Status, branches, commits, worktree management
 
-### Code Quality
-- **Code Auditor** — Analyze code for bugs, performance issues, and best practices
-- **Test Fixing** — Auto-fix failing tests with context-aware suggestions
-- **Review Implementing** — Transform code review comments into actionable fixes
+### Extensions & Integrations
 
-### Code Transformation
-- **Code Refactor** — Intelligent refactoring with full codebase awareness
-- **Code Transfer** — Migrate code between frameworks and languages
-- **File Operations** — Batch file operations with pattern matching
+- **MCP servers**: stdio / SSE / HTTP transport, runtime status monitoring
+- **Skills**: Custom, project-level, and global skills with skills.sh marketplace
+- **CLI tools**: Claude Code, Codex, O1, Gemini CLI, Cursor, Windsurf, Trae, Goose, Aider, Cline, Continue, Devin, Zed AI, Cody, Supermaven, Tabnine, v0, and more
+- **Remote Bridge**: Telegram / Feishu / Discord / QQ / WeChat remote control
+- **Image generation**: Gemini image gen with batch tasks and gallery
+- **Claude Code CLI import**: Import your `.jsonl` session history
 
-### Documentation
-- **Codebase Documenter** — Generate comprehensive project documentation
-- **Technical Doc Creator** — Create detailed technical specifications
-- **Flowchart Creator** — Generate SVG flowcharts from code logic
-- **Timeline Creator** — Build visual project timelines
-- **Architecture Diagram Creator** — Create system architecture diagrams
-- **Dashboard Creator** — Build interactive data dashboards
+### Data & Workspace
 
-### Project Management
-- **Feature Planning** — Structured feature planning with acceptance criteria
-- **Project Bootstrapper** — Scaffold new projects with best practices
-- **Ensemble Solving** — Multi-agent collaborative problem solving
-- **Conversation Analyzer** — Analyze and optimize AI conversation patterns
-
-### Automation
-- **Git Pushing** — Smart git commit and push with conventional commits
-- **Code Execution** — Execute and analyze Python code in sandbox
+- **Assistant Workspace**: Persona files (`soul.md`, `user.md`, `claude.md`, `memory.md`), onboarding flows, daily check-ins, persistent memory
+- **Generative UI**: AI creates interactive dashboards and visual widgets rendered live in-app
+- **File browser**: Project file tree with syntax-highlighted preview
+- **Memory system**: Semantic indexing for long-term memory extraction, search, and retrieval
+- **Usage analytics**: Token counts, cost estimates, daily usage charts
+- **Task scheduler**: Cron-based and interval scheduling with persistence
+- **Python runtime**: Execute Python code in sessions with a persistent interpreter
+- **Local storage**: All data stored locally via SQLite (WAL mode) -- nothing leaves your machine
+- **i18n**: English and Chinese interface
+- **Themes**: Dark and light mode, one-click toggle
 
 ---
 
 ## Quick Start
 
-### Prerequisites
+### Download a Release
 
-| Dependency | Version |
-|------------|---------|
-| Node.js | 18+ |
-| pnpm | 9+ |
-| Python | 3.11+ |
+1. Download the installer for your platform from the [Download](#download) section
+2. Launch CodeWiz
+3. Go to **Settings > Providers** and add your API key
+4. Start a conversation
 
-### 1. Install dependencies
-
-```bash
-# Install Node.js dependencies
-pnpm install
-
-# Install Python dependencies
-cd backend
-pip install -r requirements.txt
-cd ..
-```
-
-### 2. Configure environment
+### Build from Source
 
 ```bash
-cp .env.example .env
+git clone https://github.com/imagist13/CodeWiz
+cd CodeWiz
+
+npm install
+npm run dev              # browser mode at http://localhost:3000
+# -- or --
+npm run electron:dev     # full desktop app
 ```
 
-Edit `.env` and fill in your API keys:
+**Prerequisites**: Node.js 18+ and npm 9+
 
-```env
-HERMES_PROVIDER=openai
-HERMES_MODEL=gpt-4o
-HERMES_API_KEY=your-openai-api-key
-ANTHROPIC_API_KEY=your-anthropic-api-key
-DEEPSEEK_API_KEY=your-deepseek-api-key
-HERMES_SECRET_KEY=your-random-secret-key
-```
-
-### 3. Run in development mode
-
-```bash
-npm run dev
-```
-
-This starts both the Electron app and the FastAPI backend concurrently:
-- **Desktop App** — `electron-vite` dev server
-- **Backend** — FastAPI on `http://localhost:1478`
-
-### 4. Build for distribution
-
-```bash
-npm run dist
-```
-
-Outputs a Windows NSIS installer to `dist/`.
+> **Note**: Installing the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/overview) (`npm install -g @anthropic-ai/claude-code`) unlocks additional capabilities like file editing, terminal commands, and git operations. Recommended but not required for basic chat.
 
 ---
 
-## Configuration
+## Architecture
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `HERMES_PROVIDER` | Yes | `openai` | LLM provider: `openai`, `anthropic`, `deepseek` |
-| `HERMES_MODEL` | No | `gpt-4o` | Model name |
-| `HERMES_API_KEY` | Yes | — | API key for the selected provider |
-| `ANTHROPIC_API_KEY` | No | — | Anthropic API key |
-| `DEEPSEEK_API_KEY` | No | — | DeepSeek API key |
-| `HERMES_SECRET_KEY` | No | — | JWT signing secret |
-| `BACKEND_HOST` | No | `127.0.0.1` | Backend bind host |
-| `BACKEND_PORT` | No | `1478` | Backend bind port |
-| `HERMES_DATA_DIR` | No | `data/` | User data directory |
+```
+┌─────────────────────────────────────────────────────────┐
+│                 Electron 40 (Desktop Shell)              │
+│  ┌──────────────┐  ┌─────────────┐  ┌────────────────┐  │
+│  │ Main Process │  │   Preload   │  │  Terminal Mgr  │  │
+│  │  - IPC       │  │  - dialog   │  │  - PTY/ConPTY  │  │
+│  │  - Tray      │  │  - bridge   │  │  - Shell spawn │  │
+│  │  - Auto-update│ │  - notif    │  └────────────────┘  │
+│  └──────────────┘  └─────────────┘                      │
+└─────────────────────────────────────────────────────────┘
+                              │ IPC
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│               Next.js 16 (App Router)                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ React 19 UI  │  │  30+ API     │  │ Claude Agent  │  │
+│  │ Components   │◄─┤  Routes      ├─►│ SDK (SSE)     │  │
+│  └──────────────┘  └──────────────┘  └───────┬───────┘  │
+│                                              │           │
+│  ┌──────────────────────────────────────────┼─────────┐  │
+│  │              Core Library (src/lib/)      │         │  │
+│  │  db.ts · claude-client.ts · provider-    │         │  │
+│  │  catalog.ts · bridge/ · mcp-loader.ts   │         │  │
+│  │  task-scheduler.ts · memory/            │         │  │
+│  └──────────────────────────────────────────┼─────────┘  │
+└─────────────────────────────────────────────┼────────────┘
+                                              │
+                                              ▼
+                              ┌────────────────────────────┐
+                              │   20+ AI Providers         │
+                              │  Anthropic · OpenRouter    │
+                              │  GLM · Kimi · DeepSeek     │
+                              │  Ollama · Bedrock · etc.   │
+                              └────────────────────────────┘
+```
+
+**Tech Stack**: Electron 40 · Next.js 16 · React 19 · Tailwind CSS 4 · Radix UI · Motion · better-sqlite3 · Claude Agent SDK · Shiki · CodeMirror 6
 
 ---
 
-## Contributing
+## Platform Notes
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+macOS builds are code-signed but not notarized. Windows and Linux builds are unsigned.
 
-```bash
-# 1. Fork the repository
-# 2. Create your feature branch
-git checkout -b feature/amazing-feature
+**macOS Gatekeeper**: Right-click the app > Open > confirm, or run `xattr -cr /Applications/CodeWiz.app` in Terminal.
 
-# 3. Commit your changes
-git commit -m 'feat: add amazing feature'
+**Windows SmartScreen**: Click "More info" on the SmartScreen dialog, then "Run anyway".
 
-# 4. Push to the branch
-git push origin feature/amazing-feature
+---
 
-# 5. Open a Pull Request
-```
+## Documentation
 
-### Code Style
-
-- TypeScript → ESLint + Prettier
-- Python → PEP 8, use `ruff` for linting
-- Commit messages → Conventional Commits
+Full documentation is available at [github.com/imagist13/CodeWiz](https://github.com/imagist13/CodeWiz).
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+[Business Source License 1.1 (BSL-1.1)](LICENSE)
+
+- Personal / academic / non-profit use: free and unrestricted
+- Commercial use: requires a separate license
+- Change date: 2029-03-16 -- after which the code converts to Apache 2.0

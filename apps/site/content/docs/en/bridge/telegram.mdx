@@ -1,0 +1,80 @@
+---
+title: Telegram
+description: Configure the Telegram Bot bridge.
+---
+
+# Telegram Bridge
+
+Chat with Claude through a Telegram Bot. Supports streaming message preview, permission confirmation buttons, and rich Markdown rendering.
+
+## Create a Telegram Bot
+
+1. Search for [@BotFather](https://t.me/BotFather) in Telegram
+2. Send `/newbot`
+3. Follow the prompts to enter a display name and a username (must end with `_bot`)
+4. BotFather will return a **Bot Token** in a format like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`
+5. Copy the Token for later use
+
+## Configure in CodePilot
+
+1. Click **Bridge** in the sidebar, then switch to the **Telegram** tab
+2. Paste the Bot Token in the **Bot Credentials** section
+3. Click **Test Connection** to verify the Token is valid
+4. Once verified, click **Auto-detect Chat ID**:
+   - First, send any message to your Bot in Telegram
+   - Then click the detect button; CodePilot will automatically retrieve your Chat ID
+5. (Optional) In **Allowed Users**, enter the Telegram user IDs permitted to use the Bot, separated by commas. Leave empty for no restrictions.
+6. Click **Save**
+
+## Enable the Bridge
+
+1. Go back to the Bridge overview page
+2. Make sure the **Telegram** channel toggle is on
+3. Make sure the Bridge master switch is on
+4. Click **Start**
+
+Send a message to the Bot in Telegram and you should receive a reply from Claude.
+
+## Streaming Preview
+
+The Telegram bridge supports streaming message preview — as Claude generates a reply, the Bot updates the message content in real time so you can follow the progress without waiting for the full response.
+
+Streaming preview parameters can be adjusted in the advanced settings:
+
+- **Minimum update characters** — Minimum number of new characters accumulated before updating the message (default 20)
+- **Minimum update interval** — Shortest interval between two updates (default 700 ms)
+- **Maximum message length** — Maximum length of the preview message (default 3900 characters)
+
+## Message Format
+
+The Telegram bridge converts Claude's Markdown replies into Telegram HTML format:
+
+- Code blocks → `<pre>` with language annotation
+- Bold, italic → HTML tags
+- Links → clickable links
+- Overly long messages are automatically split into chunks (max 4096 characters each)
+
+If HTML rendering fails, the message is automatically sent as plain text.
+
+## Permission Handling
+
+When Claude needs to perform a sensitive operation, the Bot sends a message with inline buttons:
+
+- **Allow** — Allow this operation
+- **Allow for session** — Automatically allow similar operations for the rest of this session
+- **Deny** — Deny the operation
+
+## Troubleshooting
+
+### Bot not responding
+
+1. Confirm the CodePilot bridge service is running (Bridge page shows "Connected")
+2. Confirm the Telegram channel toggle is on
+3. Confirm the Bot Token is correct (re-test the connection)
+4. If you configured an allowed users list, confirm your user ID is in the list
+
+### Receiving error messages
+
+- **Insufficient API quota** — Check the API key balance
+- **Model unavailable** — Check the bridge default provider and model configuration
+- **Permission timeout** — Claude timed out waiting for permission confirmation; resend the message

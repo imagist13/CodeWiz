@@ -1,0 +1,70 @@
+---
+title: Discord
+description: Configure the Discord Bot bridge.
+---
+
+# Discord Bridge
+
+Chat with Claude through a Discord Bot. Supports both server channels and DMs, with streaming message preview.
+
+## Create a Discord Bot
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application** and enter an application name
+3. Select **Bot** in the left menu
+4. Click **Reset Token** to get the Bot Token; copy it for later use
+5. In the Bot settings, enable the following **Privileged Gateway Intents**:
+   - **Message Content Intent** — Required; the Bot needs to read message content
+   - **Server Members Intent** — Optional; used for user identity verification
+6. Select **OAuth2 > URL Generator** in the left menu
+7. Check Scopes: `bot`
+8. Check Bot Permissions: `Send Messages`, `Read Message History`, `Embed Links`
+9. Copy the generated invite link and open it in your browser
+10. Select your server and authorize the Bot to join
+
+## Configure in CodePilot
+
+1. Click **Bridge** in the sidebar, then switch to the **Discord** tab
+2. Paste the Bot Token in the **Bot Credentials** section
+3. Click **Test Connection** to verify
+4. Configure access control (to get IDs you need to enable Discord's **Developer Mode**: open Discord Settings > **Advanced** > enable **Developer Mode**, then you can right-click to copy various IDs):
+   - **Allowed Users** — Right-click a user > **Copy User ID**; separate multiple IDs with commas
+   - **Allowed Channels** — Right-click a channel > **Copy Channel ID**; restricts the Bot to specific channels
+   - **Allowed Servers** — Right-click a server icon > **Copy Server ID**; restricts the Bot to specific servers
+5. Configure group policy:
+   - **Open** — Bot responds in all allowed servers/channels
+   - **Disabled** — Bot only responds in DMs
+6. (Optional) **Require @mention** — When enabled, the Bot only responds to messages that @mention it
+7. Click **Save**
+
+## Enable the Bridge
+
+1. Go back to the Bridge overview page
+2. Make sure the **Discord** channel toggle is on
+3. Make sure the Bridge master switch is on
+4. Click **Start**
+
+## Streaming Preview
+
+The Discord bridge supports streaming message preview, updating the message in real time as Claude generates a reply. Parameters:
+
+- **Minimum update characters** — Default 40
+- **Minimum update interval** — Default 1500 ms
+- **Maximum message length** — Default 1900 characters
+
+## Message Format
+
+Discord natively supports Markdown, so Claude's replies are sent directly in Markdown format. Overly long messages are automatically split into chunks (max 2000 characters each).
+
+## Troubleshooting
+
+### Bot is online but not responding
+
+1. Confirm **Message Content Intent** is enabled (Developer Portal > Bot settings)
+2. Confirm the Bot has **Send Messages** and **View Channel** permissions for the channel
+3. If you configured allowed channels/users/servers lists, confirm the corresponding IDs are correct
+4. If **Require @mention** is enabled, make sure the message @mentions the Bot
+
+### Bot goes offline
+
+The Discord WebSocket connection may drop due to network fluctuations. CodePilot will automatically reconnect. If it keeps disconnecting, check your network connection.

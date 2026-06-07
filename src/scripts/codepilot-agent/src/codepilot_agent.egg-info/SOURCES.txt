@@ -1,0 +1,11 @@
+pyproject.toml
+src/codepilot_agent/__init__.py
+src/codepilot_agent/chat.py
+src/codepilot_agent/cli.py
+src/codepilot_agent/provider.py
+src/codepilot_agent.egg-info/PKG-INFO
+src/codepilot_agent.egg-info/SOURCES.txt
+src/codepilot_agent.egg-info/dependency_links.txt
+src/codepilot_agent.egg-info/entry_points.txt
+src/codepilot_agent.egg-info/requires.txt
+src/codepilot_agent.egg-info/top_level.txt

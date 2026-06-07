@@ -1,0 +1,197 @@
+---
+title: Git & Workspace
+description: Manage code versions, browse files, and use the terminal — all without leaving the chat window.
+---
+
+# Git & Workspace
+
+CodePilot is more than a chat window. You can open a file tree, check your Git status, commit code, and even launch a terminal — all without switching to another app.
+
+This guide walks you through how to use these features. If you're new to Git, don't worry — we'll start with the basics.
+
+---
+
+## Key Concepts
+
+If you're already comfortable with Git, feel free to skip ahead.
+
+### What Is Git?
+
+Git is a **version control tool**. In simple terms, it tracks every change you make to your code — like the "version history" feature in a document editor. You can go back to any previous version at any time, and collaborate with others without overwriting each other's work.
+
+Nearly every software project uses Git to manage code.
+
+### Common Terms
+
+| Term | What It Means |
+|------|---------------|
+| **Repository (repo)** | A project folder managed by Git. If there's a hidden `.git` folder in your project root, it's a Git repo. |
+| **Branch** | An independent timeline of code changes. You can develop a feature on a new branch, then merge it back into the main branch (usually called `main` or `master`). |
+| **Commit** | A snapshot of your code at a point in time. Whenever your changes are ready to "save," you make a commit with a short description. |
+| **Stage** | Select which files to include in the next commit. CodePilot currently stages all changes automatically. |
+| **Push** | Upload your local commits to a remote server (like GitHub) so your team can see them. |
+| **Pull** | Download commits from the remote server that others have pushed. |
+| **Worktree** | Multiple independent working directories for the same repo. This lets you work on different branches at the same time without switching back and forth. |
+
+---
+
+## The Top Bar
+
+When you open a conversation, a toolbar appears at the top. From left to right:
+
+- **Conversation title** — click the pencil icon to rename it
+- **Project folder name** — click to open in your system file manager
+- Right-side buttons: **Commit** | **Git** | **Terminal** | **File Tree**
+
+These buttons toggle the right-side panels and bottom terminal. You can have multiple panels open at once.
+
+### Commit Button
+
+Clicking "Commit All" opens a dialog where you write a commit message. Two options are available:
+
+- **Commit** — save to your local repo only
+- **Commit & Push** — save locally and upload to the remote server
+
+The small arrow ▾ on the right of the button opens a dropdown menu where you can trigger a push on its own.
+
+### Git Button
+
+The button itself shows the current branch name and the number of changed files (e.g. `main · 3`), so you can always see your status at a glance. Clicking it opens the Git panel on the right.
+
+---
+
+## File Tree
+
+Click the file tree button (rightmost in the top bar) to open your project directory on the right side.
+
+You can:
+
+- **Browse files** — expand folders and explore the project structure
+- **Preview files** — click a file to open a preview panel with syntax highlighting
+- **Add to chat** — click the plus icon next to a file to attach it as context in the current conversation
+
+You can drag the left edge of the file tree panel to adjust its width.
+
+---
+
+## File Preview
+
+Click any file in the file tree to open the preview panel.
+
+- **Source view** — syntax-highlighted code with line numbers
+- **Rendered view** — for Markdown and HTML files, switch to see the rendered output
+
+Toggle between `Source` and `Preview` using the buttons at the top.
+
+The preview panel's width is also adjustable by dragging its left edge. Use the copy button at the top to copy the entire file content.
+
+---
+
+## Git Panel
+
+The Git panel has four collapsible sections. Click a section title to expand or collapse it.
+
+### Status
+
+Shows your repo's key information:
+
+- **Current branch** and its tracked remote branch
+- **Ahead / behind** — how many local commits haven't been pushed, and how many remote commits you haven't pulled
+- **Changed files** — lists all modified files, each with a letter tag:
+  - `M` Modified
+  - `A` Added
+  - `D` Deleted
+  - `R` Renamed
+  - `?` Untracked (new file not yet known to Git)
+
+Tracked changes (M/A/D/R) appear first; untracked files are grouped separately below. When everything is committed, you'll see "All changes committed."
+
+### Branches
+
+Expand to see all local branches. Click a branch name to switch to it.
+
+Note: if you have uncommitted changes, branch switching is disabled — you'll need to commit or stash your changes first. Branches occupied by another worktree are marked and also disabled.
+
+If a switch fails, the error message appears directly above the branch list.
+
+### History
+
+Shows recent commits. Each entry includes:
+
+- Commit hash (first 7 characters)
+- Commit message
+- Author and time
+
+Click an entry to view the full diff for that commit.
+
+The history list refreshes automatically after commits and branch switches.
+
+### Worktrees
+
+If you need to work on multiple branches simultaneously, Git worktrees let you do that without switching back and forth.
+
+The worktree list shows:
+- The branch each worktree is on
+- Its file path
+- Whether it's the current worktree (highlighted with a "current" badge)
+- Whether it has uncommitted changes (amber dot)
+
+You can:
+
+- **Switch to a worktree** — click the arrow button on the right; this opens (or creates) a conversation linked to that worktree's directory
+- **Derive a new worktree** — click "Derive worktree" at the bottom, enter a branch name, and confirm. A new worktree directory and a linked conversation are created automatically.
+
+---
+
+## Terminal
+
+Click the terminal button in the top bar, or press `Ctrl + `` ` (macOS: `Cmd + `` `), to open a terminal panel at the bottom.
+
+The terminal opens in the current conversation's project directory, so you can run commands right away:
+
+```bash
+npm install
+npm run dev
+git status
+```
+
+Drag the top edge of the terminal panel to adjust its height. Press the shortcut again or click the terminal button to close it.
+
+> The current terminal is best suited for running commands and viewing output. For full terminal features (like vim or htop), use your system's native terminal app.
+
+---
+
+## Panel Layout
+
+All panels open to the right of the chat area; the terminal opens at the bottom. You can:
+
+- **Open multiple panels at once** — for example, show the Git panel and file tree side by side
+- **Resize widths** — drag any panel's left edge
+- **Resize terminal height** — drag the terminal's top edge
+- **Toggle independently** — closing one panel doesn't affect the others
+
+Panels won't squeeze the chat area beyond usability — each one has minimum and maximum width limits.
+
+---
+
+## FAQ
+
+### The Git panel says "Not a Git repository"
+
+Your project directory isn't managed by Git yet. Run `git init` in the terminal to initialize a new repo, or clone an existing one.
+
+### I can't switch branches
+
+The most common reason is uncommitted changes. Commit your current work first, or ask Claude to stash it for you, then try switching again.
+
+### Push failed
+
+Possible reasons:
+
+- No remote configured — run `git remote add origin <your-repo-url>` in the terminal
+- No push permissions — check your SSH key or token setup
+- The remote has commits you don't have locally — pull first, then push
+
+### Programs look broken in the terminal
+
+The current terminal uses a simplified implementation and doesn't support full terminal emulation. For full-screen programs like vim or htop, please use your system terminal. Everyday commands (installing dependencies, starting dev servers, running tests) work normally.

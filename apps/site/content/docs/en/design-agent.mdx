@@ -1,0 +1,64 @@
+---
+title: Design Agent
+description: Generate images using AI-powered image generation.
+---
+
+# Design Agent
+
+Design Agent is CodePilot's built-in AI image generation feature. It uses Claude to analyze your requirements, then calls the Gemini Image API to generate images.
+
+## Prerequisites
+
+To use Design Agent, you need to configure the **Google Gemini (Image)** provider:
+
+1. Go to **Settings > Providers**
+2. Click **Add Provider** and select **Google Gemini (Image)**
+3. Enter your API key
+4. Click **Save**
+
+## Single Image Generation
+
+### Enabling Design Agent
+
+Find the **Design Agent** toggle to the right of the chat input box and click to enable it. Once enabled, your messages will be analyzed by Claude as image generation requests.
+
+### Generation Workflow
+
+1. Turn on the Design Agent toggle
+2. Describe the image you want in natural language
+3. Claude analyzes your request and generates a structured image description
+4. A confirmation panel appears where you can adjust:
+   - **Prompt** — Edit the generation prompt
+   - **Aspect ratio** — Choose a ratio (1:1, 16:9, 9:16, 3:2, 4:3, and 10 more)
+   - **Resolution** — Select 1K / 2K / 4K
+5. Click generate and wait for the result
+6. The generated image appears as a card in the conversation
+
+### Reference Image
+
+You can upload a reference image to guide the generation style and composition. Attach an image in the input box and Design Agent will automatically use it as a generation reference.
+
+### Iterative Editing
+
+After generating an image, you can describe modifications directly (e.g., "remove the bottle on the right"). The system automatically uses the previous result as a reference image, enabling continuous iteration.
+
+## Batch Generation
+
+Design Agent supports batch image generation based on document content.
+
+### Workflow
+
+1. Upload a document or provide content in the conversation
+2. Describe your image requirements and style preferences
+3. Claude analyzes the document and generates a batch generation plan:
+   - Prompt for each image
+   - Aspect ratio and resolution
+   - Tags and source references
+4. You can review and edit each item in the plan individually
+5. Confirm to start batch generation
+6. A progress panel shows the generation status of each image in real time
+7. Failed items can be retried individually
+
+## Viewing History
+
+All generated images are automatically saved to the [Gallery](/docs/gallery), where you can browse, download, or bookmark them at any time.

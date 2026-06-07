@@ -1,0 +1,113 @@
+---
+title: FAQ
+description: Frequently asked questions about CodePilot.
+---
+
+# FAQ
+
+## General
+
+### What is CodePilot?
+
+CodePilot is a desktop workspace for Claude Code. It provides a graphical interface on top of the Claude Code CLI, integrating multi-provider management, MCP plugins, skills, message bridging, and the assistant workspace. Built with Electron + Next.js.
+
+### What is the relationship between CodePilot and Claude Code CLI?
+
+CodePilot is a graphical frontend for the Claude Code CLI. It calls Claude Code CLI capabilities through the Claude Agent SDK while adding GUI-exclusive features on top (multi-provider switching, bridging, gallery, etc.). You need to install the Claude Code CLI before using CodePilot.
+
+### Is CodePilot free?
+
+CodePilot is open source and free to use. You need your own API key from a supported provider (Anthropic, OpenRouter, or others). API usage fees are charged by the provider.
+
+### What operating systems are supported?
+
+- macOS 12+ (Apple Silicon and Intel)
+- Windows 10+ (64-bit)
+
+## Installation & Configuration
+
+### "Node.js not found" on first launch
+
+CodePilot requires Node.js 18+. The first-launch setup wizard will detect this and offer automatic installation. You can also install manually from [nodejs.org](https://nodejs.org).
+
+### Claude Code CLI not detected
+
+If the Setup Center shows "Claude Code not found":
+
+1. Open a terminal and run `claude --version` to confirm it's installed
+2. If installed but not detected, the binary may not be in CodePilot's PATH. Try launching CodePilot from the terminal (`open /Applications/CodePilot.app` on macOS) so it inherits your shell environment
+3. If not installed, follow the Setup Center's instructions or run `curl -fsSL https://claude.ai/install.sh | bash`
+
+### Multiple Claude Code installations (conflicts)
+
+If you see a "Multiple installations detected" warning in the Setup Center, your system has more than one Claude Code binary. This commonly happens when:
+
+- You installed via npm **and** the native installer
+- An old npm installation was left behind after switching to native
+
+**To resolve:**
+
+1. Open the Setup Center (Settings > General > Initial Setup Guide)
+2. Click **View Cleanup** on the Claude Code card
+3. Run the provided uninstall commands for each extra installation:
+   - npm: `npm uninstall -g @anthropic-ai/claude-code`
+   - Bun: `bun remove -g @anthropic-ai/claude-code`
+   - Homebrew: `brew uninstall --cask claude-code`
+4. Click **Re-detect** to verify
+
+The native installer is recommended — it's independent of Node.js/npm and receives the fastest updates.
+
+### Setup Center keeps appearing on launch
+
+The Setup Center opens automatically until all three steps (CLI, provider, project directory) are completed or skipped. To dismiss it permanently, click **Skip and Enter** in the top-right corner. You can reopen it later from Settings > General > Initial Setup Guide.
+
+### How do I get an API key?
+
+- **Anthropic** — [console.anthropic.com](https://console.anthropic.com)
+- **OpenRouter** — [openrouter.ai](https://openrouter.ai)
+- **GLM (Zhipu)** — [open.bigmodel.cn](https://open.bigmodel.cn)
+- **Kimi** — [platform.moonshot.cn](https://platform.moonshot.cn)
+- **Volcengine** — [console.volcengine.com](https://console.volcengine.com)
+- **Alibaba Cloud Bailian** — [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com)
+
+### Can I use a local LLM?
+
+Yes. Any local service that provides an OpenAI-compatible API (Ollama, LM Studio, vLLM, etc.) can be connected as a custom API provider. Select Custom API in the provider settings and enter your local service URL.
+
+### macOS says "cannot verify the developer"
+
+Go to **System Settings > Privacy & Security**, find the CodePilot prompt, and click "Open Anyway".
+
+## Usage
+
+### What are the differences between Code / Plan / Q&A modes?
+
+- **Code** — Claude can read and write files and execute commands; suitable for everyday development
+- **Plan** — Claude only analyzes and proposes solutions without executing actions; suitable for the planning phase
+- **Q&A** — Claude only answers questions without using tools; suitable for pure Q&A
+
+### How do I chat with Claude from my phone?
+
+Use the [Message Bridge](/docs/bridge) feature to connect CodePilot to Telegram, Discord, Feishu, or QQ. Keep the desktop app running and you can chat with Claude from your phone.
+
+### What should I do if Claude isn't responding?
+
+1. Check that your API key is valid and has sufficient balance
+2. Check your internet connection
+3. Try switching to a different provider
+4. Check the MCP page for any server errors
+5. Restart CodePilot
+
+### How do I import CLI conversation history?
+
+Use the import feature on the chat page to search for and import historical sessions from the Claude Code CLI.
+
+## Feedback & Support
+
+### How do I report a bug?
+
+Open an issue on [GitHub Issues](https://github.com/op7418/CodePilot/issues). Please include:
+
+- Your OS and CodePilot version
+- Steps to reproduce
+- Relevant error logs

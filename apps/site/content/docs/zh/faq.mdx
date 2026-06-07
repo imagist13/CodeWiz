@@ -1,0 +1,113 @@
+---
+title: 常见问题
+description: 关于 CodePilot 的常见问题解答。
+---
+
+# 常见问题
+
+## 基本问题
+
+### CodePilot 是什么？
+
+CodePilot 是 Claude Code 的桌面工作区。它在 Claude Code CLI 的基础上提供图形界面，整合了多服务商管理、MCP 插件、技能、消息桥接和助理工作区等功能。基于 Electron + Next.js 构建。
+
+### CodePilot 和 Claude Code CLI 是什么关系？
+
+CodePilot 是 Claude Code CLI 的图形前端。它通过 Claude Agent SDK 调用 Claude Code CLI 的能力，同时在上层添加了 GUI 专属的功能（多服务商切换、桥接、素材库等）。使用 CodePilot 需要先安装 Claude Code CLI。
+
+### CodePilot 免费吗？
+
+CodePilot 本身开源且免费。你需要自备 API 密钥（来自 Anthropic、OpenRouter 或其他支持的服务商）。API 调用费用由服务商收取。
+
+### 支持哪些操作系统？
+
+- macOS 12+（Apple Silicon 和 Intel）
+- Windows 10+（64 位）
+
+## 安装与配置
+
+### 首次启动提示找不到 Node.js
+
+CodePilot 需要 Node.js 18+。首次启动的设置向导会检测并提供自动安装。你也可以从 [nodejs.org](https://nodejs.org) 手动安装。
+
+### Claude Code CLI 未被检测到
+
+如果设置中心显示"未找到 Claude Code"：
+
+1. 打开终端运行 `claude --version` 确认是否已安装
+2. 如果已安装但未被检测到，可能是二进制不在 CodePilot 的 PATH 中。尝试从终端启动 CodePilot（macOS 上运行 `open /Applications/CodePilot.app`），这样可以继承 shell 环境变量
+3. 如果未安装，按照设置中心的指引操作，或运行 `curl -fsSL https://claude.ai/install.sh | bash`
+
+### Claude Code 多版本冲突
+
+如果设置中心显示"检测到多个安装版本"的警告，说明系统中存在多个 Claude Code 二进制文件。常见原因：
+
+- 通过 npm **和**原生安装器分别安装了
+- 切换到原生安装后遗留了旧的 npm 安装
+
+**解决方法：**
+
+1. 打开设置中心（设置 > 通用 > 首次设置引导）
+2. 在 Claude Code 卡片上点击**查看清理方式**
+3. 按照提供的命令卸载多余的安装：
+   - npm：`npm uninstall -g @anthropic-ai/claude-code`
+   - Bun：`bun remove -g @anthropic-ai/claude-code`
+   - Homebrew：`brew uninstall --cask claude-code`
+4. 点击**重新检测**验证
+
+推荐使用原生安装器 — 不依赖 Node.js/npm，更新最快。
+
+### 设置中心每次启动都弹出
+
+设置中心会在三个步骤（CLI、服务商、项目目录）全部完成或跳过前自动弹出。要永久关闭，点击右上角的**跳过并进入**。之后可以在设置 > 通用 > 首次设置引导中重新打开。
+
+### 如何获取 API 密钥？
+
+- **Anthropic** — [console.anthropic.com](https://console.anthropic.com)
+- **OpenRouter** — [openrouter.ai](https://openrouter.ai)
+- **智谱 GLM** — [open.bigmodel.cn](https://open.bigmodel.cn)
+- **Kimi** — [platform.moonshot.cn](https://platform.moonshot.cn)
+- **火山引擎** — [console.volcengine.com](https://console.volcengine.com)
+- **阿里云百炼** — [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com)
+
+### 可以使用本地大模型吗？
+
+可以。任何提供 OpenAI 兼容 API 的本地服务（Ollama、LM Studio、vLLM 等）都可以作为自定义 API 服务商接入。在服务商设置中选择自定义 API，填写本地服务的 URL。
+
+### macOS 提示"无法验证开发者"
+
+前往 **系统设置 > 隐私与安全性**，找到 CodePilot 相关提示，点击"仍要打开"。
+
+## 使用问题
+
+### 代码 / 计划 / 问答三种模式有什么区别？
+
+- **代码** — Claude 可以读写文件、执行命令，适合日常开发
+- **计划** — Claude 只分析方案不执行操作，适合规划阶段
+- **问答** — Claude 只回答问题不使用工具，适合纯问答
+
+### 如何在手机上与 Claude 对话？
+
+使用 [消息桥接](/zh/docs/bridge) 功能，将 CodePilot 连接到 Telegram、Discord、飞书或 QQ。桌面端保持运行即可从手机上与 Claude 对话。
+
+### Claude 没有响应怎么办？
+
+1. 检查 API 密钥是否有效且有余额
+2. 检查网络连接
+3. 尝试切换到其他服务商
+4. 查看 MCP 页面是否有服务器报错
+5. 重启 CodePilot
+
+### 如何导入 CLI 的对话历史？
+
+在对话页面使用导入功能，可以搜索并导入 Claude Code CLI 中的历史会话。
+
+## 反馈与支持
+
+### 如何报告 Bug？
+
+在 [GitHub Issues](https://github.com/op7418/CodePilot/issues) 提交，请包含：
+
+- 操作系统和 CodePilot 版本
+- 复现步骤
+- 相关错误日志
