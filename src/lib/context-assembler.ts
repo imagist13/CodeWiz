@@ -258,6 +258,44 @@ export async function assembleContext(config: ContextAssemblyConfig): Promise<As
     }
   }
 
+  // [VOLATILE 9] Knowledge base retrieval — semantic search over workspace docs.
+  // Only active when the session is within the assistant workspace and knowledge
+  // is enabled. Results above threshold are injected as context for the LLM.
+  if (isAssistantProject) {
+    try {
+      const knowledgeEnabled = getSetting('knowledge_enabled') === 'true';
+      if (knowledgeEnabled && userPrompt.trim().length > 50) {
+        const workspacePath = getSetting('assistant_workspace_path');
+        if (workspacePath) {
+          const providerId =
+            getSetting('knowledge_embedding_provider') || getSetting('default_provider_id');
+          const model = getSetting('knowledge_embedding_model') || 'text-embedding-3-small';
+          const threshold = parseFloat(getSetting('knowledge_injection_threshold') || '0.65');
+          const limit = parseInt(getSetting('knowledge_limit') || '3', 10);
+
+          if (providerId) {
+            const { getProvider } = await import('@/lib/db');
+            const provider = getProvider(providerId);
+            if (provider && provider.api_key) {
+              const { searchKnowledge, formatKnowledgeForPrompt } =
+                await import('@/lib/knowledge-retrieval');
+              const results = await searchKnowledge(userPrompt, workspacePath, provider, model, {
+                limit,
+                threshold,
+              });
+              if (results.length > 0) {
+                volatileParts.push(formatKnowledgeForPrompt(results));
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Knowledge retrieval failed — don't block the conversation
+      console.warn('[context-assembler] Knowledge retrieval failed:', e);
+    }
+  }
+
   // Concatenate: static prefix + volatile suffix
   const allParts = [...staticParts, ...volatileParts].filter(Boolean);
   const finalSystemPrompt = allParts.length > 0 ? allParts.join('\n\n') : undefined;

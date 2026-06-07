@@ -942,6 +942,36 @@ function migrateDb(db: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_task_run_logs_task_id ON task_run_logs(task_id);
   `);
+
+  // Knowledge base: vector storage
+  // knowledge_entries: metadata for each indexed chunk
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS knowledge_entries (
+      id TEXT PRIMARY KEY,
+      workspace_path TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      heading TEXT NOT NULL DEFAULT '',
+      text TEXT NOT NULL,
+      chunk_id TEXT NOT NULL,
+      start_line INTEGER,
+      end_line INTEGER,
+      embedding_model TEXT NOT NULL,
+      dimension INTEGER NOT NULL,
+      mtime_ms REAL NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_knowledge_workspace
+    ON knowledge_entries(workspace_path);
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_knowledge_file
+    ON knowledge_entries(workspace_path, file_path);
+  `);
+
+  // Add vector_json column for embeddings (if not exists)
+  safeAddColumn(db, "ALTER TABLE knowledge_entries ADD COLUMN vector_json TEXT NOT NULL DEFAULT '[]'");
 }
 
 // ==========================================
@@ -2865,6 +2895,91 @@ export function closeDb(): void {
     }
     db = null;
   }
+}
+
+// ==========================================
+// Knowledge Base (vector search) Operations
+// ==========================================
+
+export interface KnowledgeEntry {
+  id: string;
+  workspace_path: string;
+  file_path: string;
+  heading: string;
+  text: string;
+  chunk_id: string;
+  start_line: number | null;
+  end_line: number | null;
+  embedding_model: string;
+  dimension: number;
+  mtime_ms: number;
+  vector_json: string;
+  created_at: string;
+}
+
+export function upsertKnowledgeEntry(entry: KnowledgeEntry): void {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO knowledge_entries
+      (id, workspace_path, file_path, heading, text, chunk_id, start_line, end_line, embedding_model, dimension, mtime_ms, vector_json, created_at)
+    VALUES
+      (@id, @workspace_path, @file_path, @heading, @text, @chunk_id, @start_line, @end_line, @embedding_model, @dimension, @mtime_ms, @vector_json, @created_at)
+    ON CONFLICT(id) DO UPDATE SET
+      heading = excluded.heading,
+      text = excluded.text,
+      start_line = excluded.start_line,
+      end_line = excluded.end_line,
+      mtime_ms = excluded.mtime_ms,
+      vector_json = excluded.vector_json
+  `).run(entry);
+}
+
+export function deleteKnowledgeEntriesByFile(workspacePath: string, filePath: string): void {
+  const db = getDb();
+  db.prepare(
+    'DELETE FROM knowledge_entries WHERE workspace_path = ? AND file_path = ?'
+  ).run(workspacePath, filePath);
+}
+
+export function deleteKnowledgeEntriesByWorkspace(workspacePath: string): void {
+  const db = getDb();
+  db.prepare('DELETE FROM knowledge_entries WHERE workspace_path = ?').run(workspacePath);
+}
+
+export function getKnowledgeStats(workspacePath: string): {
+  count: number;
+  dimension: number;
+  embeddingModel: string;
+  lastIndexed: string | null;
+} {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) as count,
+      COALESCE(MAX(dimension), 0) as dimension,
+      COALESCE(MAX(embedding_model), '') as embedding_model,
+      MAX(created_at) as last_indexed
+    FROM knowledge_entries
+    WHERE workspace_path = ?
+  `).get(workspacePath) as { count: number; dimension: number; embedding_model: string; last_indexed: string | null } | undefined;
+  return {
+    count: row?.count ?? 0,
+    dimension: row?.dimension ?? 0,
+    embeddingModel: row?.embedding_model ?? '',
+    lastIndexed: row?.last_indexed ?? null,
+  };
+}
+
+export function getKnowledgeEntryByChunkId(chunkId: string): KnowledgeEntry | undefined {
+  const db = getDb();
+  return db.prepare('SELECT * FROM knowledge_entries WHERE chunk_id = ?').get(chunkId) as KnowledgeEntry | undefined;
+}
+
+export function getKnowledgeEntriesByWorkspace(workspacePath: string): KnowledgeEntry[] {
+  const db = getDb();
+  return db.prepare(
+    'SELECT * FROM knowledge_entries WHERE workspace_path = ? ORDER BY file_path, start_line'
+  ).all(workspacePath) as KnowledgeEntry[];
 }
 
 // Register shutdown handlers to close the database when the process exits.

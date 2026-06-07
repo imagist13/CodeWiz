@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect, useMemo, type KeyboardEvent, type FormEvent } from 'react';
-import { Terminal } from "@/components/ui/icon";
+import { Terminal, Brain } from "@/components/ui/icon";
 import { useTranslation } from '@/hooks/useTranslation';
 import type { TranslationKey } from '@/i18n';
 import {
@@ -35,6 +35,7 @@ import { useCliToolsFetch } from '@/hooks/useCliToolsFetch';
 import { useSlashCommands } from '@/hooks/useSlashCommands';
 import { resolveKeyAction, cycleIndex, resolveDirectSlash, dispatchBadge, buildCliAppend, parseMentionRefs, dedupeMentionsByPath, getSkillMarkdownUrl } from '@/lib/message-input-logic';
 import { QuickActions } from './QuickActions';
+import { KnowledgeSearchPopover } from './KnowledgeSearchPopover';
 
 const MAX_MENTION_FILE_BYTES = 256 * 1024; // 256KB per @file mention
 const MAX_MENTION_FILE_COUNT = 6;
@@ -134,6 +135,8 @@ export function MessageInput({
   const [mentionNodeTypes, setMentionNodeTypes] = useState<Record<string, 'file' | 'directory'>>({});
   const [badgeOrder, setBadgeOrder] = useState<Record<string, number>>({});
   const [mentionOrder, setMentionOrder] = useState<Record<string, number>>({});
+  const [knowledgePopoverOpen, setKnowledgePopoverOpen] = useState(false);
+  const knowledgePopoverRef = useRef<HTMLDivElement | null>(null);
   const orderSeqRef = useRef(0);
   const setInputValue = useCallback((v: string | ((prev: string) => string)) => {
     setInputValueRaw((prev) => {
@@ -748,6 +751,14 @@ export function MessageInput({
     onEffortChange?.(v);
   }, [onEffortChange]);
 
+  const handleKnowledgeInsert = useCallback((text: string) => {
+    setInputValue((prev) => {
+      const trimmed = prev.trimEnd();
+      return trimmed ? `${trimmed}\n\n${text}` : text;
+    });
+    textareaRef.current?.focus();
+  }, []);
+
   const currentModelValue = modelName || 'sonnet';
   const chatStatus: ChatStatus = isStreaming ? 'streaming' : 'ready';
 
@@ -791,6 +802,15 @@ export function MessageInput({
               onFocusTextarea={() => textareaRef.current?.focus()}
             />
           )}
+
+          {/* Knowledge base search popover */}
+          <KnowledgeSearchPopover
+            open={knowledgePopoverOpen}
+            query={inputValue}
+            onClose={() => setKnowledgePopoverOpen(false)}
+            onInsert={handleKnowledgeInsert}
+            containerRef={knowledgePopoverRef}
+          />
 
           {/* Quick Actions — memory-driven suggestion chips */}
           <QuickActions
@@ -854,6 +874,21 @@ export function MessageInput({
                   </TooltipTrigger>
                   <TooltipContent>
                     {t('cliTools.selectTool' as TranslationKey)}
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Knowledge base search button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PromptInputButton
+                      onClick={() => setKnowledgePopoverOpen((v) => !v)}
+                      className={knowledgePopoverOpen ? 'text-primary' : ''}
+                    >
+                      <Brain size={16} />
+                    </PromptInputButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t('chat.knowledgeSearch' as TranslationKey)}
                   </TooltipContent>
                 </Tooltip>
 

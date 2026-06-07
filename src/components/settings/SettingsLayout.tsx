@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useSyncExternalStore } from "react";
-import { type Icon, Gear, Code, UserCircle, Plug, ChartBar } from "@/components/ui/icon";
+import { type Icon, Gear, Code, UserCircle, Plug, ChartBar, Brain } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { GeneralSection } from "./GeneralSection";
@@ -9,10 +9,11 @@ import { ProviderManager } from "./ProviderManager";
 import { CliSettingsSection } from "./CliSettingsSection";
 import { UsageStatsSection } from "./UsageStatsSection";
 import { AssistantWorkspaceSection } from "./AssistantWorkspaceSection";
+import { KnowledgeSettings } from "./KnowledgeSettings";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { TranslationKey } from "@/i18n";
 
-type Section = "general" | "providers" | "cli" | "usage" | "assistant";
+type Section = "general" | "providers" | "cli" | "usage" | "assistant" | "knowledge";
 
 interface SidebarItem {
   id: Section;
@@ -26,6 +27,7 @@ const sidebarItems: SidebarItem[] = [
   { id: "cli", label: "Claude CLI", icon: Code },
   { id: "usage", label: "Usage", icon: ChartBar },
   { id: "assistant", label: "Assistant", icon: UserCircle },
+  { id: "knowledge", label: "Knowledge", icon: Brain },
 ];
 
 function getSectionFromHash(): Section {
@@ -59,6 +61,7 @@ export function SettingsLayout() {
     'Claude CLI': 'settings.claudeCli',
     'Usage': 'settings.usage',
     'Assistant': 'settings.assistant',
+    'Knowledge': 'settings.knowledge.title',
   };
 
   const handleSectionChange = useCallback((section: Section) => {
@@ -105,6 +108,7 @@ export function SettingsLayout() {
           {activeSection === "cli" && <CliSettingsSection />}
           {activeSection === "usage" && <UsageStatsSection />}
           {activeSection === "assistant" && <AssistantWorkspaceSection />}
+          {activeSection === "knowledge" && <KnowledgeSettings />}
         </div>
       </div>
     </div>
