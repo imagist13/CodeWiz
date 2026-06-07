@@ -18,6 +18,8 @@ import { ImageGenConfirmation } from './ImageGenConfirmation';
 import { ImageGenCard } from './ImageGenCard';
 import { BatchPlanInlinePreview } from './batch-image-gen/BatchPlanInlinePreview';
 import { WidgetRenderer } from './WidgetRenderer';
+import { DevPipeline } from './dev/DevStepCard';
+import type { DevStep } from './dev/DevStepCard';
 import { buildReferenceImages } from '@/lib/image-ref-store';
 import { SPECIES_IMAGE_URL, EGG_IMAGE_URL, RARITY_BG_GRADIENT, type Species, type Rarity } from '@/lib/buddy';
 import { parseDBDate } from '@/lib/utils';
@@ -129,6 +131,50 @@ function parseBatchPlan(text: string): { beforeText: string; plan: PlannerOutput
   } catch {
     return null;
   }
+}
+
+function parseDevStep(text: string): { beforeText: string; steps: DevStep[]; afterText: string } | null {
+  const regex = /```dev-step\s*\n?([\s\S]*?)\n?\s*```/g;
+  const steps: DevStep[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      steps.push({
+        step: parsed.step || 'clarify',
+        status: parsed.status || 'pending',
+        title: parsed.title,
+        questions: parsed.questions,
+        confirmed: parsed.confirmed,
+        techChoices: parsed.techChoices,
+        files: parsed.files,
+        steps: parsed.steps,
+        risks: parsed.risks,
+        filesFound: parsed.filesFound,
+        newFiles: parsed.newFiles,
+        codeBlocks: parsed.codeBlocks,
+        writeResults: parsed.writeResults,
+        lintPassed: parsed.lintPassed,
+        testPassed: parsed.testPassed,
+        testSummary: parsed.testSummary,
+        branch: parsed.branch,
+        commitMsg: parsed.commitMsg,
+        prDescription: parsed.prDescription,
+        summary: parsed.summary,
+      });
+    } catch {
+      // Malformed JSON — skip
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (steps.length === 0) return null;
+  const devMatch = text.match(/```dev-step/);
+  const beforeText = devMatch ? text.slice(0, devMatch.index!).trim() : '';
+  const afterText = text.slice(lastIndex).trim();
+  return { beforeText, steps, afterText };
 }
 
 interface ShowWidgetData {
@@ -849,6 +895,18 @@ const AssistantContent = memo(function AssistantContent({ displayText, messageId
           {batchPlanResult.beforeText && <MessageResponse>{batchPlanResult.beforeText}</MessageResponse>}
           <BatchPlanInlinePreview plan={batchPlanResult.plan} messageId={messageId} />
           {batchPlanResult.afterText && <MessageResponse>{batchPlanResult.afterText}</MessageResponse>}
+        </>
+      );
+    }
+
+    // Try dev-step (Dev pipeline cards)
+    const devStepResult = parseDevStep(displayText);
+    if (devStepResult) {
+      return (
+        <>
+          {devStepResult.beforeText && <MessageResponse>{devStepResult.beforeText}</MessageResponse>}
+          <DevPipeline steps={devStepResult.steps} />
+          {devStepResult.afterText && <MessageResponse>{devStepResult.afterText}</MessageResponse>}
         </>
       );
     }

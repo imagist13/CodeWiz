@@ -15,6 +15,8 @@ import { ImageGenConfirmation } from './ImageGenConfirmation';
 import { BatchPlanInlinePreview } from './batch-image-gen/BatchPlanInlinePreview';
 import { WidgetRenderer } from './WidgetRenderer';
 import { parseAllShowWidgets, computePartialWidgetKey } from './MessageItem';
+import { DevPipeline } from './dev/DevStepCard';
+import type { DevStep } from './dev/DevStepCard';
 import { PENDING_KEY, buildReferenceImages } from '@/lib/image-ref-store';
 import type { PlannerOutput, MediaBlock } from '@/types';
 
@@ -89,6 +91,51 @@ function parseBatchPlan(text: string): { beforeText: string; plan: PlannerOutput
   }
 }
 
+function parseDevStep(text: string): { beforeText: string; steps: DevStep[]; afterText: string } | null {
+  // Match multiple ```dev-step ... ``` blocks
+  const regex = /```dev-step\s*\n?([\s\S]*?)\n?\s*```/g;
+  const steps: DevStep[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      steps.push({
+        step: parsed.step || 'clarify',
+        status: parsed.status || 'pending',
+        title: parsed.title,
+        questions: parsed.questions,
+        confirmed: parsed.confirmed,
+        techChoices: parsed.techChoices,
+        files: parsed.files,
+        steps: parsed.steps,
+        risks: parsed.risks,
+        filesFound: parsed.filesFound,
+        newFiles: parsed.newFiles,
+        codeBlocks: parsed.codeBlocks,
+        writeResults: parsed.writeResults,
+        lintPassed: parsed.lintPassed,
+        testPassed: parsed.testPassed,
+        testSummary: parsed.testSummary,
+        branch: parsed.branch,
+        commitMsg: parsed.commitMsg,
+        prDescription: parsed.prDescription,
+        summary: parsed.summary,
+      });
+    } catch {
+      // Malformed JSON — skip this block
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (steps.length === 0) return null;
+
+  const beforeText = text.slice(0, text.indexOf('```dev-step')).trim();
+  const afterText = text.slice(lastIndex).trim();
+  return { beforeText, steps, afterText };
+}
+
 interface ToolUseInfo {
   id: string;
   name: string;
@@ -121,7 +168,7 @@ interface StreamingMessageProps {
  */
 const BUFFER_WORD_THRESHOLD = 40;
 const BUFFER_MAX_MS = 2500;
-const STRUCTURED_BLOCK_RE = /```(show-widget|batch-plan|image-gen-request)/;
+const STRUCTURED_BLOCK_RE = /```(show-widget|batch-plan|image-gen-request|dev-step)/;
 
 function useBufferedContent(rawContent: string, isStreaming: boolean): string {
   const [bypassed, setBypassed] = useState(false);
@@ -471,6 +518,18 @@ export function StreamingMessage({
                 {batchPlanResult.beforeText && <MessageResponse>{batchPlanResult.beforeText}</MessageResponse>}
                 <BatchPlanInlinePreview plan={batchPlanResult.plan} messageId="streaming-preview" />
                 {batchPlanResult.afterText && <MessageResponse>{batchPlanResult.afterText}</MessageResponse>}
+              </>
+            );
+          }
+
+          // Try dev-step (Dev pipeline cards)
+          const devStepResult = parseDevStep(content);
+          if (devStepResult) {
+            return (
+              <>
+                {devStepResult.beforeText && <MessageResponse>{devStepResult.beforeText}</MessageResponse>}
+                <DevPipeline steps={devStepResult.steps} />
+                {devStepResult.afterText && <MessageResponse>{devStepResult.afterText}</MessageResponse>}
               </>
             );
           }

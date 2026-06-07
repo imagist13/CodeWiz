@@ -23,11 +23,19 @@ function getGlobalCommandsDir(): string {
 }
 
 function getProjectCommandsDir(cwd?: string): string {
-  return path.join(cwd || process.cwd(), ".claude", "commands");
+  const base = cwd || process.cwd();
+  const cmdDir = path.join(base, ".claude", "commands");
+  // If cwd points to a parent dir (e.g. D:\desktop\code) that has no
+  // .claude/commands, fall back to process.cwd() (the Next.js project root).
+  if (cwd && fs.existsSync(cmdDir)) return cmdDir;
+  return path.join(process.cwd(), ".claude", "commands");
 }
 
 function getProjectSkillsDir(cwd?: string): string {
-  return path.join(cwd || process.cwd(), ".claude", "skills");
+  const base = cwd || process.cwd();
+  const sklDir = path.join(base, ".claude", "skills");
+  if (cwd && fs.existsSync(sklDir)) return sklDir;
+  return path.join(process.cwd(), ".claude", "skills");
 }
 
 function getPluginCommandsDirs(): string[] {
@@ -307,13 +315,14 @@ export async function GET(request: NextRequest) {
     }
     const globalDir = getGlobalCommandsDir();
     const projectDir = getProjectCommandsDir(cwd);
-
+    console.log(`[skills] projectDir=${projectDir}, cwd_hint=${cwd}, process.cwd()=${process.cwd()}, exists=${fs.existsSync(projectDir)}`);
     console.log(`[skills] Scanning global: ${globalDir} (exists: ${fs.existsSync(globalDir)})`);
     console.log(`[skills] Scanning project: ${projectDir} (exists: ${fs.existsSync(projectDir)})`);
     console.log(`[skills] HOME=${process.env.HOME}, homedir=${os.homedir()}`);
 
     const globalSkills = scanDirectory(globalDir, "global");
     const projectSkills = scanDirectory(projectDir, "project");
+    console.log(`[skills] project skill files: ${projectSkills.map(s => s.name).join(', ')}`);
 
     // Scan project-level skills (.claude/skills/*/SKILL.md)
     const projectSkillsDir = getProjectSkillsDir(cwd);
