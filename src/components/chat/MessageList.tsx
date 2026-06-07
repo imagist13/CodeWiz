@@ -275,7 +275,7 @@ export function MessageList({
   return (
     <Conversation>
       <ScrollOnStream isStreaming={isStreaming} messageCount={messages.length} />
-      <ConversationContent className="mx-auto max-w-3xl px-4 py-6 gap-6">
+      <ConversationContent className="mx-auto max-w-4xl px-6 py-8 gap-8">
         {hasMore && (
           <div className="flex justify-center">
             <Button

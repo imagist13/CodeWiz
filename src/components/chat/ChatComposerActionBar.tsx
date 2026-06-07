@@ -10,12 +10,12 @@ interface ChatComposerActionBarProps {
 
 export function ChatComposerActionBar({ left, center, right }: ChatComposerActionBarProps) {
   return (
-    <div className="flex items-center justify-between gap-2 px-4 pt-0.5 pb-2.5">
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between gap-3 px-4 pt-0.5 pb-3">
+      <div className="flex items-center gap-2.5">
         {left}
         {center}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         {right}
       </div>
     </div>

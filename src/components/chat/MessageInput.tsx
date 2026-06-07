@@ -763,7 +763,7 @@ export function MessageInput({
   const chatStatus: ChatStatus = isStreaming ? 'streaming' : 'ready';
 
   return (
-    <div className="bg-background/80 backdrop-blur-lg px-4 pt-2 pb-1">
+    <div className="bg-background/80 backdrop-blur-lg px-6 pt-3 pb-2">
       <div className="mx-auto">
         <div className="relative">
           {/* Slash Command / File Popover */}
