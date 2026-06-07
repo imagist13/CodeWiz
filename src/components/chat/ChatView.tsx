@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { BatchExecutionDashboard, BatchContextSync } from './batch-image-gen';
 import { setLastGeneratedImages, loadLastGenerated } from '@/lib/image-ref-store';
+import { listenDevStepConfirm } from '@/lib/dev-step-event';
 import { useChatCommands } from '@/hooks/useChatCommands';
 import { useAssistantTrigger } from '@/hooks/useAssistantTrigger';
 import { useStreamSubscription } from '@/hooks/useStreamSubscription';
@@ -789,6 +790,33 @@ export function ChatView({ sessionId, initialMessages = [], initialHasMore = fal
     };
     window.addEventListener('dashboard-widget-drilldown', handler);
     return () => window.removeEventListener('dashboard-widget-drilldown', handler);
+  }, []);
+
+  // Listen for Dev pipeline step confirmations — inject into chat
+  useEffect(() => {
+    const cleanup = listenDevStepConfirm(({ step, answers }) => {
+      if (!sendMessageRef.current) return;
+
+      const stepLabel: Record<string, string> = {
+        clarify: '澄清',
+        plan: '方案',
+        locate: '定位',
+        generate: '生成',
+        write: '写入',
+        verify: '验证',
+        pr: 'PR',
+      };
+
+      const answerLines = Object.entries(answers)
+        .map(([q, a]) => `- ${q}: ${a}`)
+        .join('\n');
+
+      const content = `已确认 [${stepLabel[step] || step}] 步骤。\n${answerLines}`;
+      const display = `[✓] 已确认：${stepLabel[step] || step}`;
+
+      sendMessageRef.current(content, undefined, undefined, display);
+    });
+    return cleanup;
   }, []);
 
   // Listen for dashboard command input

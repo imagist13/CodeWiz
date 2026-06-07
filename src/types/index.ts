@@ -107,6 +107,8 @@ export interface CommandBadge {
   description: string;
   kind: SkillKind;
   installedSource?: 'agents' | 'claude';
+  /** Skill source: project (local .claude/commands) or installed */
+  source?: 'project' | 'installed' | 'global' | 'plugin' | 'sdk';
 }
 
 /** Active CLI tool badge shown above the textarea. */

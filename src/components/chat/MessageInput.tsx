@@ -33,7 +33,7 @@ import { useProviderModels } from '@/hooks/useProviderModels';
 import { useCommandBadge } from '@/hooks/useCommandBadge';
 import { useCliToolsFetch } from '@/hooks/useCliToolsFetch';
 import { useSlashCommands } from '@/hooks/useSlashCommands';
-import { resolveKeyAction, cycleIndex, resolveDirectSlash, dispatchBadge, buildCliAppend, parseMentionRefs, dedupeMentionsByPath } from '@/lib/message-input-logic';
+import { resolveKeyAction, cycleIndex, resolveDirectSlash, dispatchBadge, buildCliAppend, parseMentionRefs, dedupeMentionsByPath, getSkillMarkdownUrl } from '@/lib/message-input-logic';
 import { QuickActions } from './QuickActions';
 
 const MAX_MENTION_FILE_BYTES = 256 * 1024; // 256KB per @file mention
@@ -468,12 +468,35 @@ export function MessageInput({
       }
       const mentionAppend = mentionSections.length > 0 ? `\n\n${mentionSections.join('\n\n')}` : '';
       const finalPrompt = `${prompt}${mentionAppend}`.trim();
+
+      // Load skill markdown for project/installed badges
+      const badge = badges[0];
+      let systemPromptAppend: string | undefined;
+      if (badge.source === 'project' || badge.source === 'installed') {
+        const url = getSkillMarkdownUrl(badge, workingDirectory);
+        if (url) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) {
+              const data = await res.json();
+              // API returns { skill: { content: "..." } }
+              const markdown = data.skill?.content || data.content || data.markdown;
+              if (markdown) {
+                systemPromptAppend = markdown;
+              }
+            }
+          } catch {
+            // Silently ignore — badge will still work without the markdown
+          }
+        }
+      }
+
       clearBadgesWithOrder();
       setInputValue('');
       onSend(
         finalPrompt,
         files.length > 0 ? files : undefined,
-        undefined,
+        systemPromptAppend,
         displayLabel,
         mentionPayload.mentions.length > 0 ? mentionPayload.mentions : undefined,
       );

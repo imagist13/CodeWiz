@@ -20,6 +20,8 @@ export interface InsertResult {
 export interface BadgeDispatchResult {
   prompt: string;
   displayLabel: string;
+  /** Markdown content from a skill file to inject into system prompt */
+  skillMarkdown?: string;
 }
 
 export type KeyAction =
@@ -131,6 +133,7 @@ export function resolveItemSelection(
         description: item.description || '',
         kind: item.kind || 'slash_command',
         installedSource: item.installedSource,
+        source: item.source,
       },
       newInputValue: before + after,
     };
@@ -200,6 +203,21 @@ export function dispatchBadge(
       return { prompt: finalPrompt, displayLabel };
     }
   }
+}
+
+/**
+ * Returns the API URL to fetch skill markdown content for a given badge.
+ * Returns null if the badge has no associated skill file (e.g. built-in or SDK commands).
+ */
+export function getSkillMarkdownUrl(badge: CommandBadge, cwd?: string): string | null {
+  // Only project and installed skills have a markdown file on disk
+  if (badge.source !== 'project' && badge.source !== 'installed') return null;
+
+  const name = badge.label;
+  const params = new URLSearchParams();
+  if (cwd) params.set('cwd', cwd);
+  const qs = params.toString();
+  return `/api/skills/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`;
 }
 
 /**

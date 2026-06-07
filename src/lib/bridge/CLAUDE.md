@@ -1,6 +1,6 @@
 # Bridge 模块
 
-多 IM 远程桥接系统，通过 Telegram（后续可扩展）远程操控 CodePilot 中的 Claude 会话。
+多 IM 远程桥接系统，通过 Telegram（后续可扩展）远程操控 CodeWiz 中的 Claude 会话。
 
 ## 关键约定
 

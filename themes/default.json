@@ -2,7 +2,7 @@
   "id": "default",
   "label": "Default",
   "order": 0,
-  "description": "The default CodePilot color scheme",
+  "description": "The default CodeWiz color scheme",
   "codeTheme": {
     "light": "oneLight",
     "dark": "oneDark"

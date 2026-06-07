@@ -13,6 +13,8 @@
 import type { ChatSession } from '@/types';
 import { getSetting } from '@/lib/db';
 import { EGG_IMAGE_URL } from '@/lib/buddy';
+import fs from 'fs';
+import path from 'path';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -234,6 +236,26 @@ export async function assembleContext(config: ContextAssemblyConfig): Promise<As
   // [VOLATILE 7] Per-request append (image agent mode, skills, etc.)
   if (systemPromptAppend) {
     volatileParts.push(systemPromptAppend);
+  }
+
+  // [VOLATILE 8] Auto-detect slash commands and inject their markdown content.
+  // This is a fallback for when the front-end hasn't already injected the markdown.
+  const commandPattern = /^\/(Dev|Clarify)(?:\s|$)/;
+  if (commandPattern.test(userPrompt)) {
+    const commandsDir = path.join(process.cwd(), '.claude', 'commands');
+    const matched = userPrompt.match(commandPattern);
+    if (matched) {
+      const cmdName = matched[1];
+      const cmdPath = path.join(commandsDir, `${cmdName}.md`);
+      try {
+        if (fs.existsSync(cmdPath)) {
+          const markdown = fs.readFileSync(cmdPath, 'utf-8');
+          volatileParts.push(`[Skill: /${cmdName}]\n${markdown}`);
+        }
+      } catch {
+        // Silently ignore
+      }
+    }
   }
 
   // Concatenate: static prefix + volatile suffix

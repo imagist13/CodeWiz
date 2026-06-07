@@ -26,9 +26,9 @@ CodeWiz 是一款跨平台桌面应用，将所有主流 AI 服务商汇聚于�
 
 | 平台 | 安装包 | 架构 |
 |---|---|---|
-| macOS | [.dmg](https://github.com/op7418/CodePilot/releases/latest) | arm64 / x64 |
-| Windows | [.exe](https://github.com/op7418/CodePilot/releases/latest) | x64 + arm64 |
-| Linux | [AppImage](https://github.com/op7418/CodePilot/releases/latest) · [.deb](https://github.com/op7418/CodePilot/releases/latest) · [.rpm](https://github.com/op7418/CodePilot/releases/latest) | x64 + arm64 |
+| macOS | [.dmg](https://github.com/imagist13/CodeWiz/releases/latest) | arm64 / x64 |
+| Windows | [.exe](https://github.com/imagist13/CodeWiz/releases/latest) | x64 + arm64 |
+| Linux | [AppImage](https://github.com/imagist13/CodeWiz/releases/latest) · [.deb](https://github.com/imagist13/CodeWiz/releases/latest) · [.rpm](https://github.com/imagist13/CodeWiz/releases/latest) | x64 + arm64 |
 
 ---
 
@@ -160,7 +160,7 @@ macOS 构建已签名但未公证。Windows 和 Linux 构建未签名。
 
 ## 文档
 
-完整文档请访问 [codepilot.sh/zh/docs](https://www.codepilot.sh/zh/docs)。
+完整文档请访问 [github.com/imagist13/CodeWiz](https://github.com/imagist13/CodeWiz)。
 
 ---
 

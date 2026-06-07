@@ -26,9 +26,9 @@ But CodeWiz goes beyond chat. It's a fully capable AI agent platform:
 
 | Platform | Installer | Architectures |
 |---|---|---|
-| macOS | [.dmg](https://github.com/op7418/CodePilot/releases/latest) | arm64 / x64 |
-| Windows | [.exe](https://github.com/op7418/CodePilot/releases/latest) | x64 + arm64 |
-| Linux | [AppImage](https://github.com/op7418/CodePilot/releases/latest) · [.deb](https://github.com/op7418/CodePilot/releases/latest) · [.rpm](https://github.com/op7418/CodePilot/releases/latest) | x64 + arm64 |
+| macOS | [.dmg](https://github.com/imagist13/CodeWiz/releases/latest) | arm64 / x64 |
+| Windows | [.exe](https://github.com/imagist13/CodeWiz/releases/latest) | x64 + arm64 |
+| Linux | [AppImage](https://github.com/imagist13/CodeWiz/releases/latest) · [.deb](https://github.com/imagist13/CodeWiz/releases/latest) · [.rpm](https://github.com/imagist13/CodeWiz/releases/latest) | x64 + arm64 |
 
 ---
 
@@ -161,7 +161,7 @@ macOS builds are code-signed but not notarized. Windows and Linux builds are uns
 
 ## Documentation
 
-Full documentation is available at [codepilot.sh/docs](https://www.codepilot.sh/docs).
+Full documentation is available at [github.com/imagist13/CodeWiz](https://github.com/imagist13/CodeWiz).
 
 ---
 

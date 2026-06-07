@@ -178,11 +178,11 @@ function createTray(): void {
   const iconPath = getIconPath();
   const trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
   tray = new Tray(trayIcon);
-  tray.setToolTip('CodePilot — Bridge Active');
+  tray.setToolTip('CodeWiz — Bridge Active');
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open CodePilot',
+      label: 'Open CodeWiz',
       click: () => {
         if (BrowserWindow.getAllWindows().length === 0) {
           createWindow(`http://127.0.0.1:${serverPort || 3000}`);
@@ -342,7 +342,7 @@ function checkNativeModuleABI(): void {
     if (msg.includes('NODE_MODULE_VERSION')) {
       console.error(`[ABI check] ABI mismatch detected: ${msg}`);
       dialog.showErrorBox(
-        'CodePilot - Native Module ABI Mismatch',
+        'CodeWiz - Native Module ABI Mismatch',
         `The bundled better-sqlite3 native module was compiled for a different Node.js version.\n\n` +
         `${msg}\n\n` +
         `This usually means the build process did not correctly recompile native modules for Electron.\n` +
@@ -513,7 +513,7 @@ function isPortFree(port: number): Promise<boolean> {
  *
  * We try this range in order so the origin stays consistent across restarts.
  * Range chosen: 47823–47830 (8 ports). These are unassigned by IANA and
- * uncommon in practice. 8 candidates handles up to 8 concurrent CodePilot
+ * uncommon in practice. 8 candidates handles up to 8 concurrent CodeWiz
  * instances before falling back to OS-assigned, which is plenty for normal use.
  */
 const STABLE_PORTS = [47823, 47824, 47825, 47826, 47827, 47828, 47829, 47830];
@@ -740,7 +740,7 @@ const LOADING_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!DOCTY
 <body>
 <div class="container">
   <div class="spinner"></div>
-  <p>Starting CodePilot...</p>
+  <p>Starting CodeWiz...</p>
 </div>
 </body>
 </html>`)}`;
@@ -1644,7 +1644,7 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error('Failed to start:', err);
     dialog.showErrorBox(
-      'CodePilot - Failed to Start',
+      'CodeWiz - Failed to Start',
       `The internal server could not start.\n\n${err instanceof Error ? err.message : String(err)}\n\nPlease try restarting the application.`
     );
     app.quit();
