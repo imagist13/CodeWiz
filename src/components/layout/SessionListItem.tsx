@@ -98,8 +98,13 @@ export function SessionListItem({
           )}
         </span>
         {/* Title — flex-1 + truncate ensures it shrinks */}
-        <span className="flex-1 min-w-0 line-clamp-1 text-[13px] font-medium leading-tight break-all">
+        <span className="flex-1 min-w-0 flex items-center gap-1.5 line-clamp-1 text-[13px] font-medium leading-tight break-all">
           {session.title}
+          {session.agent_mode === 'agent' && (
+            <span className="shrink-0 inline-flex items-center rounded bg-primary/20 px-1 py-0.5 text-[10px] font-medium text-primary">
+              Agent
+            </span>
+          )}
         </span>
         {/* Right area — fixed width, time or dots swap via opacity */}
         <span className="shrink-0 w-[38px] flex items-center justify-end">
