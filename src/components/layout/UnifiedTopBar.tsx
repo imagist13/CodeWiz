@@ -114,10 +114,10 @@ export function UnifiedTopBar() {
 
   // On non-chat routes, render only a thin drag region (no visible bar)
   if (!isChatRoute) {
-    // Thin drag region for macOS window dragging — just enough for traffic light area
+    // Thin drag region for macOS window dragging
     return (
       <div
-        className="h-3 shrink-0"
+        className="h-0 shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       />
     );
@@ -126,7 +126,7 @@ export function UnifiedTopBar() {
   return (
     <>
       <div
-        className="flex h-12 shrink-0 items-center gap-2 bg-background px-3"
+        className="flex h-10 shrink-0 items-center gap-2 bg-background/50 px-3 border-b border-border/40"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         {/* Left: chat title + project folder */}
@@ -143,37 +143,37 @@ export function UnifiedTopBar() {
                   onChange={(e) => setEditTitle(e.target.value)}
                   onKeyDown={handleTitleKeyDown}
                   onBlur={handleSaveTitle}
-                  className="h-7 text-sm max-w-[200px]"
+                  className="h-6 text-xs max-w-[180px] px-2"
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-1 cursor-default max-w-[200px]">
-                <h2 className="text-sm font-medium text-foreground/80 truncate">
+              <div className="flex items-center gap-1 cursor-default max-w-[180px]">
+                <h2 className="text-xs font-medium text-foreground/70 truncate">
                   {sessionTitle}
                 </h2>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleStartEditTitle}
-                  className="shrink-0 h-auto w-auto p-0.5"
+                  className="shrink-0 h-auto w-auto p-0.5 opacity-0 group-hover:opacity-100"
                 >
-                  <PencilSimple size={12} className="text-muted-foreground" />
+                  <PencilSimple size={11} className="text-muted-foreground/60" />
                 </Button>
               </div>
             )
           )}
 
           {isChatRoute && projectName && sessionTitle && (
-            <span className="text-xs text-muted-foreground/60 shrink-0">/</span>
+            <span className="text-[10px] text-muted-foreground/40 shrink-0 mx-0.5">/</span>
           )}
 
           {isChatRoute && projectName && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant="ghost"
+                  variant="link"
                   size="sm"
-                  className="text-xs text-muted-foreground/60 shrink-0 hover:text-foreground transition-colors h-auto p-0"
+                  className="text-[11px] text-muted-foreground/50 shrink-0 hover:text-foreground/70 transition-colors h-auto p-0"
                   onClick={() => {
                     if (workingDirectory) {
                       if (window.electronAPI?.shell?.openPath) {
@@ -192,7 +192,7 @@ export function UnifiedTopBar() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs break-all">{workingDirectory}</p>
+                <p className="text-[10px] break-all">{workingDirectory}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -203,7 +203,7 @@ export function UnifiedTopBar() {
 
         {/* Right: action buttons */}
         <div
-          className="flex items-center gap-1"
+          className="flex items-center gap-0.5"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {isChatRoute && (
@@ -213,16 +213,16 @@ export function UnifiedTopBar() {
                   <Button
                     variant={gitPanelOpen ? "secondary" : "ghost"}
                     size="sm"
-                    className={`h-7 gap-1 px-1.5 ${gitPanelOpen ? "" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`h-7 gap-1 px-2 ${gitPanelOpen ? "bg-primary/10 text-primary" : "text-muted-foreground/60 hover:text-foreground/70"}`}
                     onClick={() => setGitPanelOpen(!gitPanelOpen)}
                   >
-                    <GitBranch size={16} />
+                    <GitBranch size={13} />
                     {currentBranch && (
-                      <span className="text-xs max-w-[100px] truncate">{currentBranch}</span>
+                      <span className="text-[11px] max-w-[80px] truncate">{currentBranch}</span>
                     )}
                     {gitDirtyCount > 0 && (
-                      <span className="flex items-center gap-0.5 text-[11px] text-amber-500">
-                        <DotOutline size={10} weight="fill" />
+                      <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
+                        <DotOutline size={9} weight="fill" />
                         {gitDirtyCount}
                       </span>
                     )}
@@ -237,10 +237,10 @@ export function UnifiedTopBar() {
                   <Button
                     variant={fileTreeOpen ? "secondary" : "ghost"}
                     size="icon-sm"
-                    className={fileTreeOpen ? "" : "text-muted-foreground hover:text-foreground"}
+                    className={`h-7 w-7 ${fileTreeOpen ? "bg-primary/10 text-primary" : "text-muted-foreground/60 hover:text-foreground/70"}`}
                     onClick={() => setFileTreeOpen(!fileTreeOpen)}
                   >
-                    <TreeStructure size={16} />
+                    <TreeStructure size={14} />
                     <span className="sr-only">{t('topBar.fileTree')}</span>
                   </Button>
                 </TooltipTrigger>
@@ -252,15 +252,15 @@ export function UnifiedTopBar() {
                   <Button
                     variant={dashboardPanelOpen ? "secondary" : "ghost"}
                     size="icon-sm"
-                    className={dashboardPanelOpen ? "" : "text-muted-foreground hover:text-foreground"}
+                    className={`h-7 w-7 ${dashboardPanelOpen ? "bg-primary/10 text-primary" : "text-muted-foreground/60 hover:text-foreground/70"}`}
                     onClick={() => setDashboardPanelOpen(!dashboardPanelOpen)}
                   >
                     {isAssistantWorkspace
                       ? <img
                           src={buddySpecies ? (SPECIES_IMAGE_URL[buddySpecies as Species] || '') : EGG_IMAGE_URL}
-                          alt="" width={16} height={16} className="rounded-sm"
+                          alt="" width={14} height={14} className="rounded-[3px]"
                         />
-                      : <ChartBar size={16} />}
+                      : <ChartBar size={14} />}
                     <span className="sr-only">{t('topBar.dashboard')}</span>
                   </Button>
                 </TooltipTrigger>
