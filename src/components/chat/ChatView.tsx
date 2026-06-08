@@ -59,13 +59,12 @@ interface ChatViewProps {
   initialPermissionProfile?: 'default' | 'full_access';
   initialMode?: 'code' | 'plan';
   initialHasSummary?: boolean;
-  initialAgentMode?: 'claude' | 'agent';
 }
 
 /** Maximum messages kept in React state. Older messages are trimmed and reloaded on scroll. */
 const MAX_MESSAGES_IN_MEMORY = 300;
 
-export function ChatView({ sessionId, initialMessages = [], initialHasMore = false, modelName, providerId, initialPermissionProfile, initialMode, initialHasSummary, initialAgentMode }: ChatViewProps) {
+export function ChatView({ sessionId, initialMessages = [], initialHasMore = false, modelName, providerId, initialPermissionProfile, initialMode, initialHasSummary }: ChatViewProps) {
   const { setStreamingSessionId, workingDirectory, setPendingApprovalSessionId, setDashboardPanelOpen, setFileTreeOpen, setIsAssistantWorkspace } = usePanel();
   const { t } = useTranslation();
   const router = useRouter();
@@ -128,7 +127,6 @@ export function ChatView({ sessionId, initialMessages = [], initialHasMore = fal
     });
   }, []);
   const [mode, setMode] = useState<string>(initialMode || 'code');
-  const [agentMode, setAgentMode] = useState<'claude' | 'agent'>(initialAgentMode || 'claude');
   const [currentModel, setCurrentModel] = useState(() => modelName || (typeof window !== 'undefined' ? localStorage.getItem('codepilot:last-model') : null) || 'sonnet');
   const [currentProviderId, setCurrentProviderId] = useState(() => providerId || (typeof window !== 'undefined' ? localStorage.getItem('codepilot:last-provider-id') : null) || '');
   const [selectedEffort, setSelectedEffort] = useState<string | undefined>(undefined);
@@ -236,19 +234,6 @@ export function ChatView({ sessionId, initialMessages = [], initialHasMore = fal
   const pendingImageNoticesRef = useRef<string[]>([]);
   const sendMessageRef = useRef<(content: string, files?: FileAttachment[], systemPromptAppend?: string, displayOverride?: string, mentions?: MentionRef[]) => Promise<void>>(undefined);
   const initMetaRef = useRef<{ tools?: unknown; slash_commands?: unknown; skills?: unknown } | null>(null);
-
-  const handleAgentModeChange = useCallback((newAgentMode: 'claude' | 'agent') => {
-    setAgentMode(newAgentMode);
-    if (sessionId) {
-      fetch(`/api/chat/sessions/${sessionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agent_mode: newAgentMode }),
-      }).then(() => {
-        window.dispatchEvent(new CustomEvent('session-updated'));
-      }).catch(() => { /* silent */ });
-    }
-  }, [sessionId]);
 
   const handleModeChange = useCallback((newMode: string) => {
     setMode(newMode);
@@ -891,28 +876,6 @@ export function ChatView({ sessionId, initialMessages = [], initialHasMore = fal
           </Button>
         </div>
       )}
-      {/* Agent mode toggle */}
-      <div className="flex items-center justify-end gap-2 border-b border-border/50 px-4 py-1.5">
-        <span className="text-xs text-muted-foreground">Agent:</span>
-        <button
-          onClick={() => handleAgentModeChange(agentMode === 'claude' ? 'agent' : 'claude')}
-          className={`
-            relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
-            ${agentMode === 'agent' ? 'bg-primary' : 'bg-muted'}
-          `}
-          aria-label="Toggle agent mode"
-        >
-          <span
-            className={`
-              inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200
-              ${agentMode === 'agent' ? 'translate-x-6' : 'translate-x-1'}
-            `}
-          />
-        </button>
-        <span className={`text-xs font-medium ${agentMode === 'agent' ? 'text-primary' : 'text-muted-foreground'}`}>
-          {agentMode === 'agent' ? 'Agent' : 'Claude'}
-        </span>
-      </div>
       <MessageList
         messages={messages}
         streamingContent={streamingContent}
