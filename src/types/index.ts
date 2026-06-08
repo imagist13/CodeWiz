@@ -14,7 +14,6 @@ export interface ChatSession {
   project_name: string;
   status: 'active' | 'archived';
   mode?: 'code' | 'plan' | 'ask';
-  /** Agent backend mode: 'claude' (Claude Code SDK/Native) or 'agent' (codewiz-agent FastAPI) */
   agent_mode?: 'claude' | 'agent';
   needs_approval?: boolean;
   provider_name: string;
