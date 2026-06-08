@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { TooltipProvider } from "@/components/ui/tooltip";
 // NavRail removed — navigation merged into ChatListPanel
 import { ChatListPanel } from "./ChatListPanel";
@@ -20,8 +21,18 @@ import { useGitStatus } from "@/hooks/useGitStatus";
 import { SetupCenter } from '@/components/setup/SetupCenter';
 import { Toaster } from '@/components/ui/toast';
 import { useNotificationPoll } from '@/hooks/useNotificationPoll';
+import { useClientPlatform } from '@/hooks/useClientPlatform';
 import { useGlobalSearchShortcut } from '@/hooks/useGlobalSearchShortcut';
 import { GlobalSearchDialog } from './GlobalSearchDialog';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { MagnifyingGlass, Gear } from '@/components/ui/icon';
+import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const SPLIT_SESSIONS_KEY = "codepilot:split-sessions";
 const SPLIT_ACTIVE_COLUMN_KEY = "codepilot:split-active-column";
@@ -77,7 +88,8 @@ const LG_BREAKPOINT = 1024;
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-
+  const { t } = useTranslation();
+  const { isWindows } = useClientPlatform();
   const [chatListOpenRaw, setChatListOpenRaw] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupInitialCard, setSetupInitialCard] = useState<'claude' | 'provider' | 'project' | undefined>();
@@ -495,29 +507,86 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ImageGenContext.Provider value={imageGenValue}>
         <BatchImageGenContext.Provider value={batchImageGenValue}>
         <TooltipProvider delayDuration={300}>
-          <div className="flex h-screen overflow-hidden">
-            <ErrorBoundary>
-              <ChatListPanel
-                open={chatListOpen}
-                width={chatListWidth}
-              />
-            </ErrorBoundary>
-            {chatListOpen && (
-              <ResizeHandle side="left" onResize={handleChatListResize} onResizeEnd={handleChatListResizeEnd} />
-            )}
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              <UnifiedTopBar />
-              <div className="flex flex-1 min-h-0 overflow-hidden">
-                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                  <main className="relative flex-1 overflow-hidden">
-                    {isSplitActive ? (
-                      <SplitChatContainer />
-                    ) : (
-                      <ErrorBoundary>{children}</ErrorBoundary>
-                    )}
-                  </main>
+          <div className="flex h-screen flex-col overflow-hidden">
+            {/* ===== TOP NAVIGATION BAR ===== */}
+            <div
+              className="flex h-11 shrink-0 items-center border-b border-sidebar-border/60 bg-sidebar px-3 gap-1"
+              style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            >
+              {/* Brand */}
+              <div
+                className="flex items-center gap-2 shrink-0 mr-3"
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+              >
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/20">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" opacity="0.8"/>
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </div>
-                {isChatDetailRoute && <PanelZone />}
+                <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">WizAI</span>
+              </div>
+
+              {/* Main nav */}
+              <nav
+                className="flex items-center gap-0.5"
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+              >
+                <NavNavItem href="/chat" label="Chats" isActive={pathname === "/chat" || pathname.startsWith("/chat/")} />
+                <NavNavItem href="/skills" label="Skills" isActive={pathname.startsWith("/skills")} />
+                <NavNavItem href="/mcp" label="MCP" isActive={pathname.startsWith("/mcp")} />
+                <NavNavItem href="/cli-tools" label="CLI Tools" isActive={pathname.startsWith("/cli-tools")} />
+                <NavNavItem href="/gallery" label="Gallery" isActive={pathname.startsWith("/gallery")} />
+                <NavNavItem href="/bridge" label="Bridge" isActive={pathname.startsWith("/bridge")} />
+              </nav>
+
+              {/* Spacer */}
+              <div className="flex-1" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+
+              {/* Right side controls */}
+              <div
+                className="flex items-center gap-1"
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                  onClick={() => setSearchOpen(true)}
+                >
+                  <MagnifyingGlass size={15} />
+                </Button>
+                <NavRailSettingsButton pathname={pathname} />
+                {isWindows && <div style={{ width: 138 }} className="shrink-0" />}
+              </div>
+            </div>
+
+            {/* ===== MAIN CONTENT AREA ===== */}
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              <ErrorBoundary>
+                <ChatListPanel
+                  open={chatListOpen}
+                  width={chatListWidth}
+                />
+              </ErrorBoundary>
+              {chatListOpen && (
+                <ResizeHandle side="left" onResize={handleChatListResize} onResizeEnd={handleChatListResizeEnd} />
+              )}
+              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                <UnifiedTopBar />
+                <div className="flex flex-1 min-h-0 overflow-hidden">
+                  <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                    <main className="relative flex-1 overflow-hidden">
+                      {isSplitActive ? (
+                        <SplitChatContainer />
+                      ) : (
+                        <ErrorBoundary>{children}</ErrorBoundary>
+                      )}
+                    </main>
+                  </div>
+                  {isChatDetailRoute && <PanelZone />}
+                </div>
               </div>
             </div>
           </div>
@@ -535,5 +604,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </ImageGenContext.Provider>
         </SplitContext.Provider>
       </PanelContext.Provider>
+  );
+}
+
+// ===== INLINE NAV COMPONENTS =====
+
+function NavNavItem({ href, label, isActive }: { href: string; label: string; isActive: boolean }) {
+  return (
+    <Link href={href}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className={cn(
+          "h-7 gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+          isActive
+            ? "bg-primary/15 text-primary"
+            : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        )}
+      >
+        {label}
+      </Button>
+    </Link>
+  );
+}
+
+function NavRailSettingsButton({ pathname }: { pathname: string }) {
+  const isSettingsActive = pathname === "/settings" || pathname.startsWith("/settings/");
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="relative">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon-sm"
+            className={cn(
+              "h-7 w-7",
+              isSettingsActive ? "text-sidebar-foreground" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
+            )}
+          >
+            <Link href="/settings">
+              <Gear size={15} weight={isSettingsActive ? "fill" : "regular"} />
+              <span className="sr-only">Settings</span>
+            </Link>
+          </Button>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">Settings</TooltipContent>
+    </Tooltip>
   );
 }

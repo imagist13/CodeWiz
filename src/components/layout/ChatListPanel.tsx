@@ -6,14 +6,8 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import {
   MagnifyingGlass,
-  FileArrowDown,
-  Plus,
   FolderPlus,
-  Lightning,
-  Plug,
-  Terminal,
-  Image,
-  WifiHigh,
+  Plus,
   Gear,
 } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -419,28 +413,17 @@ export function ChatListPanel({ open, width }: ChatListPanelProps) {
 
   if (!open) return null;
 
-  const navItems = [
-    { href: "/skills", label: t('nav.skills' as TranslationKey), icon: Lightning },
-    { href: "/mcp", label: t('nav.mcp' as TranslationKey), icon: Plug },
-    { href: "/cli-tools", label: t('nav.cliTools' as TranslationKey), icon: Terminal },
-    { href: "/gallery", label: t('nav.gallery' as TranslationKey), icon: Image },
-    { href: "/bridge", label: t('nav.bridge' as TranslationKey), icon: WifiHigh },
-  ];
-
   return (
     <aside
-      className="hidden h-full shrink-0 flex-col overflow-hidden bg-sidebar/80 backdrop-blur-xl lg:flex"
+      className="hidden h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border/60 bg-sidebar lg:flex"
       style={{ width: width ?? 240 }}
     >
-      {/* macOS traffic lights spacing */}
-      <div className="h-5 shrink-0 mt-3" />
-
       {/* Top action bar: New Chat + Search */}
-      <div className="flex items-center gap-2 px-3 pb-2">
+      <div className="flex items-center gap-2 px-3 pt-3 pb-2 shrink-0">
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
-          className="flex-1 justify-center gap-1.5 h-8 text-xs"
+          className="flex-1 justify-center gap-1.5 h-8 text-xs font-medium shadow-sm"
           disabled={creatingChat}
           onClick={handleNewChat}
         >
@@ -450,9 +433,9 @@ export function ChatListPanel({ open, width }: ChatListPanelProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon-sm"
-              className="h-8 w-8 shrink-0"
+              className="h-8 w-8 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground"
               onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
             >
               <MagnifyingGlass size={14} />
@@ -463,33 +446,8 @@ export function ChatListPanel({ open, width }: ChatListPanelProps) {
         </Tooltip>
       </div>
 
-      {/* Feature nav items */}
-      <div className="px-3 pb-2">
-        <div className="flex flex-col gap-0.5">
-          {navItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
-            return (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`w-full justify-start gap-2 h-8 text-xs ${
-                    isActive
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <item.icon size={14} weight={isActive ? "fill" : "regular"} />
-                  {item.label}
-                </Button>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Separator */}
-      <div className="mx-3 border-t border-border/40" />
+      <div className="mx-3 border-t border-sidebar-border/50" />
 
       {/* Section title + add folder button (fixed, not scrolling) */}
       <div className="flex items-center justify-between px-5 pt-2 pb-1.5 shrink-0">
@@ -658,15 +616,15 @@ export function ChatListPanel({ open, width }: ChatListPanelProps) {
       </ScrollArea>
 
       {/* Bottom: Settings */}
-      <div className="shrink-0 px-3 py-2">
+      <div className="shrink-0 px-3 pb-3 pt-2 border-t border-sidebar-border/50">
         <Link href="/settings">
           <Button
             variant="ghost"
             size="sm"
             className={`w-full justify-start gap-2 h-8 text-xs ${
               pathname.startsWith("/settings")
-                ? "bg-accent text-accent-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
             }`}
           >
             <Gear size={14} weight={pathname.startsWith("/settings") ? "fill" : "regular"} />
