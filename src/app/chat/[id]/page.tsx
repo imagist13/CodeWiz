@@ -25,7 +25,6 @@ export default function ChatSessionPage({ params }: ChatSessionPageProps) {
   const [sessionInfoLoaded, setSessionInfoLoaded] = useState(false);
   const [sessionPermissionProfile, setSessionPermissionProfile] = useState<'default' | 'full_access'>('default');
   const [sessionMode, setSessionMode] = useState<'code' | 'plan'>('code');
-  const [sessionAgentMode, setSessionAgentMode] = useState<'claude' | 'agent'>('claude');
   const [sessionHasSummary, setSessionHasSummary] = useState(false);
   const { setWorkingDirectory, setSessionId, setSessionTitle: setPanelSessionTitle, setFileTreeOpen, setGitPanelOpen, setDashboardPanelOpen } = usePanel();
   const targetFilePath = searchParams.get('file') || undefined;
@@ -40,7 +39,6 @@ export default function ChatSessionPage({ params }: ChatSessionPageProps) {
     setSessionModel('');
     setSessionProviderId('');
     setSessionInfoLoaded(false);
-    setSessionAgentMode('claude');
 
     async function loadSession() {
       try {
@@ -67,7 +65,6 @@ export default function ChatSessionPage({ params }: ChatSessionPageProps) {
           setSessionProviderId(resolved.providerId);
           setSessionPermissionProfile(data.session.permission_profile || 'default');
           setSessionMode((data.session.mode as 'code' | 'plan') || 'code');
-          setSessionAgentMode((data.session.agent_mode as 'claude' | 'agent') || 'claude');
           setSessionHasSummary(!!data.session.context_summary);
         }
       } catch {
@@ -189,7 +186,7 @@ export default function ChatSessionPage({ params }: ChatSessionPageProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ChatView key={id} sessionId={id} initialMessages={messages} initialHasMore={hasMore} modelName={sessionModel} providerId={sessionProviderId} initialPermissionProfile={sessionPermissionProfile} initialMode={sessionMode} initialHasSummary={sessionHasSummary} initialAgentMode={sessionAgentMode} />
+      <ChatView key={id} sessionId={id} initialMessages={messages} initialHasMore={hasMore} modelName={sessionModel} providerId={sessionProviderId} initialPermissionProfile={sessionPermissionProfile} initialMode={sessionMode} initialHasSummary={sessionHasSummary} />
     </div>
   );
 }

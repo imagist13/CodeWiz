@@ -11,7 +11,7 @@ import type { SendMessageRequest, SSEEvent, TokenUsage, MessageContentBlock, Fil
 import { saveMediaToLibrary } from '@/lib/media-saver';
 import { wrapController } from '@/lib/safe-stream';
 import { ensureSchedulerRunning } from '@/lib/task-scheduler';
-import { predictNativeRuntime, resolveRuntime, getRuntime } from '@/lib/runtime';
+import { predictNativeRuntime, resolveRuntime } from '@/lib/runtime';
 import { hasCodePilotProvider } from '@/lib/provider-presence';
 
 // Start the task scheduler on first API call
@@ -77,49 +77,6 @@ export async function POST(request: NextRequest) {
     activeSessionId = session_id;
     activeLockId = lockId;
     setSessionRuntimeStatus(session_id, 'running');
-
-    // ── codewiz-agent routing ────────────────────────────────────────
-    // If this session uses the codewiz-agent backend, proxy to FastAPI via codewizRuntime
-    if (session.agent_mode === 'agent') {
-      const agentRuntime = getRuntime('codewiz-agent');
-      if (!agentRuntime) {
-        releaseSessionLock(session_id, lockId);
-        setSessionRuntimeStatus(session_id, 'idle');
-        return new Response(JSON.stringify({ error: 'codewiz-agent runtime not available' }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      const abortCtrl = new AbortController();
-      request.signal.addEventListener('abort', () => abortCtrl.abort());
-
-      const agentStream = agentRuntime.stream({
-        prompt: content,
-        sessionId: session_id,
-        model,
-        systemPrompt: session.system_prompt || undefined,
-        workingDirectory: session.working_directory || undefined,
-        abortController: abortCtrl,
-      });
-
-      // Tee: one for client, one for DB persistence
-      const [streamForClient, streamForCollect] = agentStream.tee();
-
-      const lockRenewalInterval = setInterval(() => {
-        try { renewSessionLock(session_id, lockId, 600); } catch { /* best effort */ }
-      }, 60_000);
-
-      collectStreamResponse(streamForCollect, session_id, { sessionId: session_id, sessionTitle: session.title, workingDirectory: session.working_directory }, () => {
-        clearInterval(lockRenewalInterval);
-        releaseSessionLock(session_id, lockId);
-        setSessionRuntimeStatus(session_id, 'idle');
-      }, { suppressNotifications: false });
-
-      return new Response(streamForClient, {
-        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
-      });
-    }
 
     // ── /compact command handler ────────────────────────────────────
     if (content.trim() === '/compact') {

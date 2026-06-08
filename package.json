@@ -16,7 +16,6 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "next dev",
-    "dev:agent": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && cd src/lib/codewiz-agent && python -m uvicorn app.main:app --host 127.0.0.1 --port 18732\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

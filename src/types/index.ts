@@ -326,7 +326,7 @@ export interface CreateSessionRequest {
   mode?: string;
   provider_id?: string;
   permission_profile?: string;
-  /** 'claude' (default) or 'agent' (codewiz-agent FastAPI backend) */
+  /** 'claude' (default) or 'agent' */
   agent_mode?: 'claude' | 'agent';
 }
 

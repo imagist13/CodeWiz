@@ -335,27 +335,44 @@ export async function PUT(
         { status: 409 }
       );
     }
+
+    let targetPath: string;
+    let source: SkillSource = "project";
+
     if (!found) {
-      return NextResponse.json({ error: "Skill not found" }, { status: 404 });
+      // No existing file found — create a new one.
+      // When cwd is provided, always create in the project dir (it's the user's intent).
+      // Otherwise fall back to the global commands dir.
+      if (cwdParam) {
+        targetPath = path.join(getProjectCommandsDir(cwdParam), `${name}.md`);
+        source = "project";
+      } else {
+        targetPath = path.join(getGlobalCommandsDir(), `${name}.md`);
+        source = "global";
+      }
+      // Ensure parent dir exists
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    } else {
+      targetPath = found.filePath;
+      source = found.source;
     }
 
-    fs.writeFileSync(found.filePath, content ?? "", "utf-8");
+    fs.writeFileSync(targetPath, content ?? "", "utf-8");
 
     const firstLine = (content ?? "").split("\n")[0]?.trim() || "";
     const description = firstLine.startsWith("#")
       ? firstLine.replace(/^#+\s*/, "")
       : firstLine || `Skill: /${name}`;
 
-    const kind: SkillKind = found.filePath.endsWith("SKILL.md") ? "agent_skill" : "slash_command";
+    const kind: SkillKind = targetPath.endsWith("SKILL.md") ? "agent_skill" : "slash_command";
 
     return NextResponse.json({
       skill: {
         name,
         description,
         content: content ?? "",
-        source: found.source,
-        installedSource: found.installedSource,
-        filePath: found.filePath,
+        source,
+        filePath: targetPath,
         kind,
       },
     });

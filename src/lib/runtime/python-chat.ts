@@ -31,29 +31,46 @@ export interface PythonChatOptions {
   abortController?: AbortController;
 }
 
-/** Detect a Python interpreter with the codepilot-agent package installed. */
+/** Detect a Python interpreter with the codepilot-agent package installed.
+ *  Returns the full resolved path on Windows so spawn() finds it with shell:false. */
 export function findPythonExecutable(): string | null {
-  const { execFileSync } = require('child_process');
+  const { execSync } = require('child_process');
   const isWindows = process.platform === 'win32';
 
   const candidates = isWindows
     ? [
+        'py',
+        'python',
         'D:\\compiler\\Anaconda3\\python.exe',
         'D:\\compiler\\Python312\\python.exe',
-        'python',
         'python3',
       ]
     : ['python3', 'python'];
 
   for (const exe of candidates) {
     try {
-      const out = execFileSync(exe, ['-c', 'import codepilot_agent; print("ok")'], {
-        encoding: 'utf-8',
-        timeout: 5000,
-        stdio: ['ignore', 'pipe', 'ignore'],
-        shell: false,
-      });
-      if (out.trim() === 'ok') return exe;
+      let resolved = exe;
+      if (isWindows) {
+        const psCmd = `Get-Command '${exe}' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source`;
+        const out = execSync(`powershell -NoProfile -Command "${psCmd}"`, {
+          encoding: 'utf-8',
+          timeout: 5000,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }).trim();
+        if (out && out.length > 3 && out.includes('\\')) {
+          resolved = out;
+        } else {
+          continue;
+        }
+      }
+      const verifyOut = isWindows
+        ? execSync(`"${resolved}" -c "import codepilot_agent; print('ok')"`, {
+            encoding: 'utf-8', timeout: 8000, stdio: ['ignore', 'pipe', 'ignore'], shell: true,
+          })
+        : execSync(`${resolved} -c "import codepilot_agent; print('ok')"`, {
+            encoding: 'utf-8', timeout: 8000, stdio: ['ignore', 'pipe', 'ignore'], shell: false,
+          });
+      if (verifyOut.toString().trim() === 'ok') return resolved;
     } catch {
       // Not found or package missing
     }
