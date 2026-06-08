@@ -107,6 +107,9 @@ export function predictNativeRuntime(providerId?: string): boolean {
   if (settingId === 'python-agent') return false;
   if (settingId === 'native') return true;
 
+  // codewiz-agent is an HTTP-based runtime, not native
+  if (settingId === 'codewiz-agent') return false;
+
   // Explicit SDK: needs CLI
   if (settingId === 'claude-code-sdk') {
     if (getSetting('cli_enabled') === 'false') return true;

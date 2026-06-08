@@ -12,8 +12,10 @@ import { registerRuntime } from './registry';
 import { nativeRuntime } from './native-runtime';
 import { sdkRuntime } from './sdk-runtime';
 import { pythonRuntime } from './python-runtime';
+import { codewizRuntime } from './codewiz-runtime';
 
 // Register built-in runtimes
 registerRuntime(nativeRuntime);
 registerRuntime(sdkRuntime);
 registerRuntime(pythonRuntime);
+registerRuntime(codewizRuntime);

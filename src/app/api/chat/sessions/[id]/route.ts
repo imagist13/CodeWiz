@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { deleteSession, getSession, updateSessionWorkingDirectory, updateSessionTitle, updateSessionMode, updateSessionModel, updateSessionProviderId, clearSessionMessages, updateSdkSessionId, updateSessionPermissionProfile } from '@/lib/db';
+import { deleteSession, getSession, updateSessionWorkingDirectory, updateSessionTitle, updateSessionMode, updateSessionModel, updateSessionProviderId, clearSessionMessages, updateSdkSessionId, updateSessionPermissionProfile, updateSessionAgentMode } from '@/lib/db';
 import { autoApprovePendingForSession } from '@/lib/bridge/permission-broker';
 
 export async function GET(
@@ -40,6 +40,12 @@ export async function PATCH(
     }
     if (body.mode) {
       updateSessionMode(id, body.mode);
+    }
+    if (body.agent_mode !== undefined) {
+      if (body.agent_mode !== 'claude' && body.agent_mode !== 'agent') {
+        return Response.json({ error: 'agent_mode must be "claude" or "agent"' }, { status: 400 });
+      }
+      updateSessionAgentMode(id, body.agent_mode);
     }
     // Track whether provider or model actually changed — if so, the old
     // sdk_session_id is stale and must be cleared to prevent resume failures

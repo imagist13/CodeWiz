@@ -360,6 +360,9 @@ function migrateDb(db: Database.Database): void {
   if (!colNames.includes('mode')) {
     safeAddColumn(db, "ALTER TABLE chat_sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'code'");
   }
+  if (!colNames.includes('agent_mode')) {
+    safeAddColumn(db, "ALTER TABLE chat_sessions ADD COLUMN agent_mode TEXT NOT NULL DEFAULT 'claude'");
+  }
   if (!colNames.includes('provider_name')) {
     safeAddColumn(db, "ALTER TABLE chat_sessions ADD COLUMN provider_name TEXT NOT NULL DEFAULT ''");
   }
@@ -1049,6 +1052,7 @@ export function createSession(
   mode?: string,
   providerId?: string,
   permissionProfile?: string,
+  agentMode?: string,
 ): ChatSession {
   const db = getDb();
   const id = crypto.randomBytes(16).toString('hex');
@@ -1057,8 +1061,8 @@ export function createSession(
   const projectName = path.basename(wd);
 
   db.prepare(
-    'INSERT INTO chat_sessions (id, title, created_at, updated_at, model, system_prompt, working_directory, sdk_session_id, project_name, status, mode, sdk_cwd, provider_id, permission_profile) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, title || 'New Chat', now, now, model || '', systemPrompt || '', wd, '', projectName, 'active', mode || 'code', wd, providerId || '', permissionProfile || 'default');
+    'INSERT INTO chat_sessions (id, title, created_at, updated_at, model, system_prompt, working_directory, sdk_session_id, project_name, status, mode, sdk_cwd, provider_id, permission_profile, agent_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, title || 'New Chat', now, now, model || '', systemPrompt || '', wd, '', projectName, 'active', mode || 'code', wd, providerId || '', permissionProfile || 'default', agentMode || 'claude');
 
   return getSession(id)!;
 }
@@ -1142,6 +1146,11 @@ export function updateSessionWorkingDirectory(id: string, workingDirectory: stri
 export function updateSessionMode(id: string, mode: string): void {
   const db = getDb();
   db.prepare('UPDATE chat_sessions SET mode = ? WHERE id = ?').run(mode, id);
+}
+
+export function updateSessionAgentMode(id: string, agentMode: string): void {
+  const db = getDb();
+  db.prepare('UPDATE chat_sessions SET agent_mode = ? WHERE id = ?').run(agentMode, id);
 }
 
 export function updateSessionPermissionProfile(id: string, profile: string): void {
