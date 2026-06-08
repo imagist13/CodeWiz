@@ -1,0 +1,24 @@
+jump  server
+
+http://47.116.207.69/
+xiayj
+x1998060230
+
+
+
+gitlab:
+https://gitlab.gitlab.ychealth.cc/users/sign_in
+
+xiayj
+^cWmBZRLM#LyHcW8
+
+
+
+SkillHub：
+http://192.168.0.27/
+
+codinglife
+Xx@1998060230
+
+token:
+sk_W8untN2F6RSqn7s6syQ5C_BpRJ609wUDro2devi6SQY
