@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WizAI",
+  title: "CodePilot",
   description: "A multi-model AI agent desktop client",
 };
 
