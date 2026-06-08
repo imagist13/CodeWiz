@@ -244,7 +244,9 @@ export async function GET(
     const { name } = await params;
     const url = new URL(_request.url);
     const sourceParam = url.searchParams.get("source");
-    const cwdParam = url.searchParams.get("cwd") || undefined;
+    const cwdParam = url.searchParams.get("cwd")
+      || url.searchParams.get("workingDirectory")
+      || undefined;
     const installedSource =
       sourceParam === "agents" || sourceParam === "claude"
         ? (sourceParam as InstalledSource)
@@ -314,7 +316,9 @@ export async function PUT(
 
     const url = new URL(request.url);
     const sourceParam = url.searchParams.get("source");
-    const cwdParam = url.searchParams.get("cwd") || undefined;
+    const cwdParam = url.searchParams.get("cwd")
+      || url.searchParams.get("workingDirectory")
+      || undefined;
     const installedSource =
       sourceParam === "agents" || sourceParam === "claude"
         ? (sourceParam as InstalledSource)
@@ -392,7 +396,9 @@ export async function DELETE(
     const { name } = await params;
     const url = new URL(_request.url);
     const sourceParam = url.searchParams.get("source");
-    const cwdParam = url.searchParams.get("cwd") || undefined;
+    const cwdParam = url.searchParams.get("cwd")
+      || url.searchParams.get("workingDirectory")
+      || undefined;
     const installedSource =
       sourceParam === "agents" || sourceParam === "claude"
         ? (sourceParam as InstalledSource)

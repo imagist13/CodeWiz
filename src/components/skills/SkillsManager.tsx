@@ -33,7 +33,7 @@ export function SkillsManager() {
       const res = await fetch(`/api/skills${cwdParam}`);
       if (res.ok) {
         const data = await res.json();
-        setSkills((data.skills || []).filter((s: SkillItem) => s.source !== "project"));
+        setSkills(data.skills || []);
       }
     } catch {
       // ignore

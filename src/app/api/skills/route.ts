@@ -3,7 +3,11 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
+import { fileURLToPath } from "url";
 import type { SkillKind } from "@/types";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface SkillFile {
   name: string;
@@ -23,18 +27,24 @@ function getGlobalCommandsDir(): string {
 }
 
 function getProjectCommandsDir(cwd?: string): string {
-  const base = cwd || process.cwd();
-  const cmdDir = path.join(base, ".claude", "commands");
-  // If cwd points to a parent dir (e.g. D:\desktop\code) that has no
-  // .claude/commands, fall back to process.cwd() (the Next.js project root).
-  if (cwd && fs.existsSync(cmdDir)) return cmdDir;
+  // Priority: cwd (workspace root) > __dirname (app directory) > process.cwd()
+  if (cwd) {
+    const cmdDir = path.join(cwd, ".claude", "commands");
+    if (fs.existsSync(cmdDir)) return cmdDir;
+  }
+  // Fall back to app's own .claude/commands (e.g. CodeWiz/.claude/commands)
+  const appCmdDir = path.join(__dirname, "..", "..", ".claude", "commands");
+  if (fs.existsSync(appCmdDir)) return appCmdDir;
   return path.join(process.cwd(), ".claude", "commands");
 }
 
 function getProjectSkillsDir(cwd?: string): string {
-  const base = cwd || process.cwd();
-  const sklDir = path.join(base, ".claude", "skills");
-  if (cwd && fs.existsSync(sklDir)) return sklDir;
+  if (cwd) {
+    const sklDir = path.join(cwd, ".claude", "skills");
+    if (fs.existsSync(sklDir)) return sklDir;
+  }
+  const appSklDir = path.join(__dirname, "..", "..", ".claude", "skills");
+  if (fs.existsSync(appSklDir)) return appSklDir;
   return path.join(process.cwd(), ".claude", "skills");
 }
 
@@ -297,8 +307,11 @@ function scanDirectory(
 
 export async function GET(request: NextRequest) {
   try {
-    // Accept optional cwd query param for project-level skills
-    const cwd = request.nextUrl.searchParams.get("cwd") || undefined;
+    // Accept optional cwd query param for project-level skills.
+    // Also accept workingDirectory as an alias (frontend uses this name).
+    const cwd = request.nextUrl.searchParams.get("cwd")
+      || request.nextUrl.searchParams.get("workingDirectory")
+      || undefined;
 
     // Resolve provider ID from session for correct capability cache lookup.
     // Falls back to 'env' when no session is specified.

@@ -23,7 +23,18 @@ interface CreateSkillDialogProps {
 }
 
 const TEMPLATES: { label: string; content: string }[] = [
-  { label: "Blank", content: "" },
+  {
+    label: "Slash Command",
+    content: `# {name}
+
+Describe what this skill does and when to use it.
+
+## Rules
+
+- Be concise
+- Focus on the main purpose
+`,
+  },
   {
     label: "Commit Helper",
     content: `# Commit Helper
@@ -79,7 +90,8 @@ export function CreateSkillDialog({
     setCreating(true);
     setError("");
     try {
-      await onCreate(trimmed, scope, TEMPLATES[templateIdx].content);
+      const content = TEMPLATES[templateIdx].content.replace(/\{name\}/g, trimmed);
+      await onCreate(trimmed, scope, content);
       // Reset on success
       setName("");
       setScope("project");
