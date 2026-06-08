@@ -14,6 +14,8 @@ export interface ChatSession {
   project_name: string;
   status: 'active' | 'archived';
   mode?: 'code' | 'plan' | 'ask';
+  /** Agent backend: 'claude' (Claude Code SDK) or 'agent' (codewiz-agent FastAPI) */
+  agent_mode?: 'claude' | 'agent';
   needs_approval?: boolean;
   provider_name: string;
   provider_id: string;
@@ -325,6 +327,8 @@ export interface CreateSessionRequest {
   mode?: string;
   provider_id?: string;
   permission_profile?: string;
+  /** 'claude' (default) or 'agent' (codewiz-agent FastAPI backend) */
+  agent_mode?: 'claude' | 'agent';
 }
 
 export interface SendMessageRequest {
