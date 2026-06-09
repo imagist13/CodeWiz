@@ -1,7 +1,7 @@
 [project]
 name = "codepilot-agent"
-version = "0.1.0"
-description = "CodePilot Python Agent — lightweight chat runtime via Anthropic API"
+version = "0.2.0"
+description = "CodePilot Python Agent — multi-turn tool-use agent runtime via Anthropic API"
 readme = "README.md"
 license = {text = "BUSL-1.1"}
 authors = [

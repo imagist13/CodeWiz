@@ -1,7 +1,7 @@
 Metadata-Version: 2.4
 Name: codepilot-agent
-Version: 0.1.0
-Summary: CodePilot Python Agent — lightweight chat runtime via Anthropic API
+Version: 0.2.0
+Summary: CodePilot Python Agent — multi-turn tool-use agent runtime via Anthropic API
 Author-email: op7418 <guohao631@gmail.com>
 License: BUSL-1.1
 Requires-Python: >=3.9

@@ -1,8 +1,11 @@
 pyproject.toml
 src/codepilot_agent/__init__.py
+src/codepilot_agent/agent.py
 src/codepilot_agent/chat.py
 src/codepilot_agent/cli.py
 src/codepilot_agent/provider.py
+src/codepilot_agent/session.py
+src/codepilot_agent/tools.py
 src/codepilot_agent.egg-info/PKG-INFO
 src/codepilot_agent.egg-info/SOURCES.txt
 src/codepilot_agent.egg-info/dependency_links.txt

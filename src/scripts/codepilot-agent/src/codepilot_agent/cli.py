@@ -1,37 +1,67 @@
 """CodePilot Agent CLI entry point.
 
-Usage (per-request invocation, Phase 1):
-    python -m codepilot_agent.cli \\
-        --prompt "Hello" \\
-        --model claude-sonnet-4-6 \\
+Supports two modes:
+
+Mode 1 — One-shot (--prompt): Single request, one response.
+    python -m codepilot_agent.cli \
+        --prompt "Hello" \
+        --model claude-sonnet-4-6 \
         --session-id <id>
+
+Mode 2 — Session (--session-mode): Long-running session with multi-turn
+    tool-use support via JSON-RPC over stdin/stdout.
+
+    python -m codepilot_agent.cli --session-mode
+
+    Protocol (JSON-RPC over stdin):
+        {"jsonrpc":"2.0","id":1,"method":"init","params":{...}}
+        {"jsonrpc":"2.0","id":2,"method":"message","params":{"prompt":"..."}}
+        {"jsonrpc":"2.0","id":3,"method":"interrupt","params":{}}
+        {"jsonrpc":"2.0","id":4,"method":"reset","params":{}}
+        {"jsonrpc":"2.0","id":5,"method":"delete","params":{}}
+
+    Protocol (SSE over stdout):
+        data: {"type":"status","data":"{...}"}\n\n
+        data: {"type":"text","data":"..."}\n\n
+        data: {"type":"thinking","data":"..."}\n\n
+        data: {"type":"tool_use","data":"{...}"}\n\n
+        data: {"type":"tool_result","data":"{...}"}\n\n
+        data: {"type":"error","data":"{...}"}\n\n
+        data: {"type":"done","data":""}\n\n
 
 Environment variables (injected by Node.js subprocess manager):
     ANTHROPIC_API_KEY        — API key
     ANTHROPIC_BASE_URL       — optional custom endpoint
     CODEPILOT_PROVIDER_ID   — which provider to use
     CODEPILOT_MODEL         — default model
-
-The CLI exits after a single request. Long-running session management
-(Phase 2+) will use stdio JSON-RPC for keepalive.
+    CODEPILOT_PROVIDER_TYPE — protocol: anthropic / openai-compatible
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import os
 
 from codepilot_agent.chat import ChatOptions, chat_stream
 from codepilot_agent.provider import resolve_provider
+from codepilot_agent.agent import run_session_mode
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="codepilot-agent",
-        description="CodePilot Python Agent — lightweight Claude chat runtime",
+        description="CodePilot Python Agent — lightweight Claude chat runtime with tool support",
     )
-    parser.add_argument("--prompt", required=True, help="User prompt")
+    # Mode selection
+    parser.add_argument(
+        "--session-mode",
+        action="store_true",
+        help="Run in session mode (JSON-RPC over stdin/stdout for multi-turn tool-use)",
+    )
+    # One-shot mode args
+    parser.add_argument("--prompt", help="User prompt (one-shot mode)")
     parser.add_argument("--model", default=None, help="Model ID (e.g. claude-sonnet-4-6)")
     parser.add_argument("--session-id", default=None, help="Session ID for resume tracking")
     parser.add_argument("--system-prompt", default=None, help="System prompt")
@@ -54,7 +84,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Thinking budget tokens (requires --thinking enabled)",
     )
     parser.add_argument("--provider-id", default=None, help="Provider ID")
-    parser.add_argument("--provider-type", default=None, help="Protocol: anthropic / openai-compatible / ...")
+    parser.add_argument(
+        "--provider-type",
+        default=None,
+        help="Protocol: anthropic / openai-compatible / ...",
+    )
     parser.add_argument("--provider-name", default=None, help="Human-readable provider name")
     parser.add_argument("--base-url", default=None, help="API base URL override")
     parser.add_argument(
@@ -75,18 +109,14 @@ def build_thinking_config(args: argparse.Namespace) -> dict | None:
     return result
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
-
+def run_one_shot(args: argparse.Namespace) -> int:
+    """Run a single request and exit (Phase 1 compatibility)."""
     # Read API key / base_url from env vars injected by Node.js subprocess manager.
-    # Support both Anthropic (ANTHROPIC_*) and OpenAI-compatible (OPENAI_*) conventions.
     env_api_key = (
         os.environ.get("ANTHROPIC_API_KEY")
         or os.environ.get("OPENAI_API_KEY")
         or ""
     )
-    # base_url: explicit CLI arg > OPENAI_BASE_URL > ANTHROPIC_BASE_URL
-    # Priority order ensures user intent (CLI) > env convention (OpenAI) > legacy (Anthropic)
     env_base_url = (
         os.environ.get("OPENAI_BASE_URL")
         or os.environ.get("ANTHROPIC_BASE_URL")
@@ -94,7 +124,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     effective_base_url = args.base_url or env_base_url
 
-    # Model and protocol also have dual env var names
     env_model = os.environ.get("CODEPILOT_MODEL") or os.environ.get("OPENAI_MODEL") or None
     env_protocol = os.environ.get("CODEPILOT_PROVIDER_TYPE") or None
 
@@ -109,8 +138,6 @@ def main(argv: list[str] | None = None) -> int:
             model=args.model or env_model,
         )
     except ValueError as e:
-        # Emit error SSE and exit cleanly
-        import json
         sys.stderr.write(f"[codepilot-agent] Provider resolution failed: {e}\n")
         error_payload = {
             "type": "error",
@@ -129,12 +156,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.flush()
         return 1
 
-    # Protocol: explicit arg > provider protocol > default anthropic
     protocol = args.protocol or provider.protocol or "anthropic"
 
-    # Build options
     options = ChatOptions(
-        prompt=args.prompt,
+        prompt=args.prompt or "",
         model=provider.model,
         api_key=provider.api_key,
         base_url=provider.base_url,
@@ -145,7 +170,6 @@ def main(argv: list[str] | None = None) -> int:
         protocol=protocol,
     )
 
-    # Stream SSE to stdout
     try:
         for line in chat_stream(options):
             sys.stdout.write(line)
@@ -154,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         return 130
     except Exception as e:
-        import json, traceback
+        import traceback
         sys.stderr.write(f"[codepilot-agent] Unexpected error: {e}\n{traceback.format_exc()}\n")
         error_payload = {
             "type": "error",
@@ -172,6 +196,21 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(f"data: {json.dumps({'type': 'done', 'data': ''})}\n\n")
         sys.stdout.flush()
         return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+
+    if args.session_mode:
+        # Session mode: run the agent loop with JSON-RPC
+        run_session_mode()
+        return 0
+    else:
+        # One-shot mode (backward compatible)
+        if not args.prompt:
+            sys.stderr.write("[codepilot-agent] Error: --prompt is required in one-shot mode\n")
+            return 1
+        return run_one_shot(args)
 
 
 if __name__ == "__main__":
