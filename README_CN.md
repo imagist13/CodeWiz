@@ -1,11 +1,10 @@
 # CodeWiz
 
-![CodeWiz Logo](docs/icon-readme.png)
+<p align="center">
+  <img src="docs/icon-readme.png" width="200" alt="CodeWiz Logo">
+</p>
 
 **掌控一切的 AI Agent 桌面客户端** -- 连接任意 AI 服务商，通过 MCP 和 Skills 扩展能力，自动化任务，让你的助理学会你的工作方式。
-
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()]()
-[![License](https://img.shields.io/badge/license-BSL--1.1-orange)]()
 
 ---
 

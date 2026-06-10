@@ -1,11 +1,10 @@
 # CodeWiz
 
-![CodeWiz Logo](docs/icon-readme.png)
+<p align="center">
+  <img src="docs/icon-readme.png" width="200" alt="CodeWiz Logo">
+</p>
 
 **The AI Agent desktop client that puts you in control** -- connect any AI provider, extend with MCP & skills, automate tasks, and let your assistant learn your workflow.
-
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()]()
-[![License](https://img.shields.io/badge/license-BSL--1.1-orange)]()
 
 ---
 
@@ -169,7 +168,7 @@ Full documentation is available at [CodePilot](https://github.com/op7418/CodePil
 
 ## License
 
-> **Derivative Work Notice**: This project (CodeWiz) is a derivative work based on the open-source project [CodePilot](https://github.com/imagist13/CodeWiz), licensed under the BSL-1.1 license terms of the original project.
+> **Derivative Work Notice**: This project (CodeWiz) is a derivative work based on the open-source project [CodePilot](https://github.com/op7418/CodePilot), licensed under the BSL-1.1 license terms of the original project.
 
 [Business Source License 1.1 (BSL-1.1)](LICENSE)
 
