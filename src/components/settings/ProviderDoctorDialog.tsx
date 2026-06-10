@@ -392,65 +392,6 @@ export function ProviderDoctorDialog({ open, onOpenChange }: ProviderDoctorDialo
           </div>
         )}
 
-        {/* GitHub issue guidance — shown after diagnosis completes */}
-        {result && !loading && (
-          <div className="rounded-md border border-border/30 bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
-            {isZh ? (
-              <>
-                {result.overall !== "pass"
-                  ? "如果上述修复建议未能解决问题，"
-                  : "如果您仍然遇到问题，"}
-                请先点击「导出日志」，然后前往{" "}
-                <a
-                  href="https://github.com/op7418/CodePilot/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-foreground hover:no-underline"
-                >
-                  GitHub Issues
-                </a>
-                {" "}提交问题报告，并附上导出的日志文件。
-                <br />
-                📖 查看{" "}
-                <a
-                  href="https://www.codepilot.sh/zh/docs/providers"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-foreground hover:no-underline"
-                >
-                  服务商配置指南
-                </a>
-              </>
-            ) : (
-              <>
-                {result.overall !== "pass"
-                  ? "If the suggestions above don't resolve the issue, "
-                  : "If you're still experiencing problems, "}
-                click &ldquo;Export Logs&rdquo; first, then{" "}
-                <a
-                  href="https://github.com/op7418/CodePilot/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-foreground hover:no-underline"
-                >
-                  open a GitHub Issue
-                </a>
-                {" "}and attach the exported log file.
-                <br />
-                📖 See the{" "}
-                <a
-                  href="https://www.codepilot.sh/docs/providers"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-foreground hover:no-underline"
-                >
-                  Provider Setup Guide
-                </a>
-              </>
-            )}
-          </div>
-        )}
-
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={fetchDiagnostics} disabled={loading}>
             <ArrowClockwise size={14} className={loading ? "animate-spin" : ""} />

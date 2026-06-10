@@ -10,7 +10,7 @@ import { CliToolDetailDialog } from "./CliToolDetailDialog";
 import { CliToolExtraDetailDialog } from "./CliToolExtraDetailDialog";
 // CliToolInstallDialog removed — install now goes through chat AI
 import { CliToolBatchDescribeDialog } from "./CliToolBatchDescribeDialog";
-import { SpinnerGap, Sparkle, ArrowSquareOut, Warning, Plus, Trash, Star } from "@/components/ui/icon";
+import { SpinnerGap, Sparkle, Warning, Plus, Trash, Star } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { EXTRA_WELL_KNOWN_BINS } from "@/lib/cli-tools-catalog";
 
@@ -373,19 +373,6 @@ export function CliToolsManager() {
           <p className="text-sm text-muted-foreground">{t('cliTools.allInstalled')}</p>
         )}
       </section>
-
-      {/* Docs link */}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-2">
-        <ArrowSquareOut size={12} />
-        <a
-          href={locale === 'zh' ? 'https://www.codepilot.sh/zh/docs' : 'https://www.codepilot.sh/docs'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-foreground hover:underline transition-colors"
-        >
-          {t('cliTools.viewDocs')}
-        </a>
-      </div>
 
       {/* Detail dialog */}
       {detailTool && (
