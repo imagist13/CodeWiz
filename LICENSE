@@ -1,5 +1,20 @@
 Business Source License 1.1
 
+================================================================================
+二次开发声明 / Derivative Work Notice
+================================================================================
+
+本项目（CodeWiz）是基于开源项目 CodePilot (https://github.com/op7418/CodePilot)
+进行二次开发的衍生项目，遵循原项目的 BSL-1.1 许可证条款。
+
+This project (CodeWiz) is a derivative work based on the open-source
+project CodePilot (https://github.com/op7418/CodePilot), licensed under
+the BSL-1.1 license terms of the original project.
+
+================================================================================
+Original License Header
+================================================================================
+
 Parameters
 
 Licensor:             op7418

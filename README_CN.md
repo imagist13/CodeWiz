@@ -1,5 +1,7 @@
 # CodeWiz
 
+![CodeWiz Logo](docs/icon-readme.png)
+
 **掌控一切的 AI Agent 桌面客户端** -- 连接任意 AI 服务商，通过 MCP 和 Skills 扩展能力，自动化任务，让你的助理学会你的工作方式。
 
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()]()
@@ -165,6 +167,8 @@ macOS 构建已签名但未公证。Windows 和 Linux 构建未签名。
 ---
 
 ## 许可证
+
+> **声明**：本项目（CodeWiz）是基于开源项目 [CodePilot](https://github.com/op7418/CodePilot) 进行二次开发的衍生项目，遵循原项目的 BSL-1.1 许可证条款。
 
 [Business Source License 1.1 (BSL-1.1)](LICENSE)
 
